@@ -1,0 +1,14 @@
+{
+  "extends": "../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2023"],
+    "types": ["node"],
+    // Nothing here is ever emitted or bundled: Playwright runs the TypeScript
+    // directly, so relative imports name the real `.ts` file (matching apps/api).
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": ["*.ts", "tests"]
+}

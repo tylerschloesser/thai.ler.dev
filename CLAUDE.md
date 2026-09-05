@@ -19,6 +19,7 @@ rather than waiting for it to load.
 | `schema.md` | `packages/schema/**`, `apps/api/src/normalize.ts` | shared zod, what a client may write |
 | `api.md` | `apps/api/**`, `infra/cdk/lib/api.ts` | auth seam, key shapes, idempotency, worker timeouts, sync |
 | `cdk.md` | `infra/cdk/**`, `.github/workflows/**` | stacks, the CloudFront gotchas, AWS access, secrets |
+| `testing.md` | `e2e/**`, `apps/api/src/local.ts` and its fixtures/fake model/memory store | the Playwright e2e suite, the fake-model contract, selector gotchas |
 
 Skills: `file-issue` turns a side finding into a deduped GitHub issue; `/research-issue` turns
 a topic into an executable spec issue; `verify-offline` walks the five browser-only checks;
@@ -35,10 +36,11 @@ a topic into an executable spec issue; `verify-offline` walks the five browser-o
 - `erasableSyntaxOnly` and `verbatimModuleSyntax` are on: no `enum`, no constructor parameter
   properties (assign fields in the body), and `import type` for types.
 - No formatter. Match the surrounding style: no semicolons, single quotes.
-- **There is no test framework.** CI runs lint → typecheck → build and nothing else, so
+- **There is no unit-test framework**, and **CI still runs only lint → typecheck → build**, so
   `pnpm lint && pnpm typecheck && pnpm build` is necessary and nowhere near sufficient: it
   cannot fail for any behaviour this app exists for. The offline paths only break in a real
-  browser. Run `verify-offline` after touching `apps/web/src/db/` or the service worker.
+  browser, which is what `pnpm test:e2e` (Playwright, `testing.md`) and `verify-offline` are
+  for. Run both after touching `apps/web/src/db/` or the service worker.
 - Deploy by naming the stack; the root `pnpm deploy` is ambiguous across two stacks:
   `pnpm build && AWS_PROFILE=admin pnpm --filter cdk exec cdk deploy ThaiLerDevSiteStack`.
 

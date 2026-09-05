@@ -24,6 +24,10 @@ cdk.out
 # playwright-cli session artifacts (snapshots, screenshots)
 .playwright-cli
 
+# Playwright
+e2e/test-results
+e2e/playwright-report
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

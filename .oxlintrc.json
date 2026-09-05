@@ -11,6 +11,15 @@
   },
   "overrides": [
     {
+      "files": ["e2e/**"],
+      "rules": {
+        // A Playwright fixture callback takes a parameter named `use`, which
+        // the React plugin reads as React's `use()` hook. There is no React in
+        // this package, and the shape is not negotiable — Playwright calls it.
+        "react/rules-of-hooks": "off"
+      }
+    },
+    {
       "files": ["apps/web/src/routes/**"],
       "rules": {
         // A file route exports both `Route` and its component by design, so the

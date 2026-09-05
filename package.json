@@ -13,6 +13,7 @@
     "typecheck": "pnpm -r run typecheck",
     "lint": "oxlint && stylelint \"apps/web/src/**/*.css\"",
     "lint:fix": "oxlint --fix && stylelint --fix \"apps/web/src/**/*.css\"",
+    "test:e2e": "pnpm --filter e2e test",
     "synth": "pnpm --filter cdk run synth",
     "deploy": "pnpm --filter cdk run deploy"
   },

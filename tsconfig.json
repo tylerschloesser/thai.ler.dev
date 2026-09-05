@@ -4,6 +4,7 @@
     { "path": "./packages/schema" },
     { "path": "./apps/api" },
     { "path": "./apps/web" },
-    { "path": "./infra/cdk" }
+    { "path": "./infra/cdk" },
+    { "path": "./e2e" }
   ]
 }

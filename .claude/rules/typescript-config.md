@@ -27,6 +27,8 @@ Loaded when you touch a `tsconfig*.json`, a `package.json`, or `pnpm-workspace.y
   individual packages have no `lint` script. The exception is `apps/api`, the one package also
   run directly rather than only built: its `dev`/`start`/`seed` scripts run `tsx` against
   `src/local.ts` / `src/seed-table.ts`, and the root `dev` runs `dev` there in parallel with
-  the web app's.
+  the web app's. `e2e/` is the opposite case: it is typechecked but never built — it has no
+  `build` script, Playwright runs its TypeScript directly, and `pnpm typecheck` covers it
+  because `pnpm -r` picks up its `typecheck` script.
 - `esbuild` is a **root** devDependency on purpose; the root `package.json` `"//"` key says
   why, and `.claude/rules/cdk.md` has the consequence.
