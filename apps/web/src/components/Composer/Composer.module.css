@@ -1,0 +1,40 @@
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.label {
+  font-size: var(--text-1);
+  color: var(--color-text);
+}
+
+.textarea {
+  width: 100%;
+  padding: var(--space-4);
+  font-family: inherit;
+  font-size: var(--text-3);
+  line-height: var(--leading-normal);
+  color: var(--color-text-strong);
+  resize: vertical;
+  background-color: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-3);
+}
+
+.textarea::placeholder {
+  color: var(--color-text);
+  opacity: 0.6;
+}
+
+.actions {
+  display: flex;
+  gap: var(--space-3);
+  align-items: center;
+}

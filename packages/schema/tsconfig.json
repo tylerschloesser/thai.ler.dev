@@ -1,0 +1,15 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2023"],
+    "types": [],
+    // Consumed as source by both Vite and esbuild, never emitted, so relative
+    // imports name the real file. (infra/cdk uses `.js` because it runs
+    // through tsx, which does not resolve `.ts` specifiers.)
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  "include": ["src"]
+}

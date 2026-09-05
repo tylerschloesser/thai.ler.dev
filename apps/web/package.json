@@ -12,17 +12,32 @@
   "dependencies": {
     "@base-ui/react": "catalog:",
     "@radix-ui/colors": "catalog:",
+    "@tanstack/db": "catalog:",
+    "@tanstack/offline-transactions": "catalog:",
+    "@tanstack/query-async-storage-persister": "catalog:",
+    "@tanstack/query-db-collection": "catalog:",
+    "@tanstack/react-db": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-query-persist-client": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@thai/schema": "workspace:*",
+    "idb-keyval": "catalog:",
     "react": "catalog:",
-    "react-dom": "catalog:"
+    "react-dom": "catalog:",
+    "zod": "catalog:"
   },
   "devDependencies": {
     "@css-modules-kit/codegen": "catalog:",
     "@css-modules-kit/ts-plugin": "catalog:",
+    "@tanstack/router-plugin": "catalog:",
     "@types/node": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "@vitejs/plugin-react": "catalog:",
     "typescript": "catalog:",
-    "vite": "catalog:"
+    "vite": "catalog:",
+    "vite-plugin-pwa": "catalog:",
+    "workbox-build": "catalog:",
+    "workbox-window": "catalog:"
   }
 }

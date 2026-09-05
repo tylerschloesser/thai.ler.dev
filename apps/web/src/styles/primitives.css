@@ -31,5 +31,17 @@
 @import '@radix-ui/colors/purple-alpha.css';
 @import '@radix-ui/colors/purple-dark-alpha.css';
 
+/* status: work in flight */
+@import '@radix-ui/colors/amber.css';
+@import '@radix-ui/colors/amber-dark.css';
+@import '@radix-ui/colors/amber-alpha.css';
+@import '@radix-ui/colors/amber-dark-alpha.css';
+
+/* status: failed */
+@import '@radix-ui/colors/red.css';
+@import '@radix-ui/colors/red-dark.css';
+@import '@radix-ui/colors/red-alpha.css';
+@import '@radix-ui/colors/red-dark-alpha.css';
+
 /* shadows */
 @import '@radix-ui/colors/black-alpha.css';

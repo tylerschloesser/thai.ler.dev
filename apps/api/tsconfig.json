@@ -1,0 +1,17 @@
+{
+  "extends": "../../tsconfig.base.json",
+  "compilerOptions": {
+    "module": "nodenext",
+    "moduleResolution": "nodenext",
+    "lib": ["ES2023"],
+    "types": ["node", "aws-lambda"],
+    // Bundled by esbuild via CDK's NodejsFunction, never emitted by tsc.
+    "allowImportingTsExtensions": true,
+    "noEmit": true
+  },
+  // No project reference to @thai/schema: it is consumed as source through its
+  // exports map, so it is typechecked as part of this program. A reference
+  // would require it to be `composite` and emit declarations, which nothing
+  // here needs.
+  "include": ["src"]
+}

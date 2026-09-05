@@ -1,0 +1,48 @@
+.shell {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+}
+
+.header {
+  position: sticky;
+  top: 0;
+  z-index: 1;
+  display: flex;
+  gap: var(--space-4);
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: var(--layout-max-width);
+  padding: var(--space-3) var(--space-4);
+  margin-inline: auto;
+  background-color: var(--color-bg);
+  border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.brand {
+  display: inline-flex;
+  gap: var(--space-3);
+  align-items: baseline;
+  color: var(--color-text-strong);
+  text-decoration: none;
+  border-radius: var(--radius-1);
+}
+
+.brandThai {
+  font-size: var(--text-4);
+  font-weight: var(--weight-medium);
+  color: var(--color-accent-text);
+}
+
+.brandName {
+  font-size: var(--text-1);
+  letter-spacing: var(--tracking-normal);
+}
+
+.main {
+  width: 100%;
+  max-width: var(--layout-max-width);
+  padding: var(--space-6) var(--space-4) var(--space-13);
+  margin-inline: auto;
+}

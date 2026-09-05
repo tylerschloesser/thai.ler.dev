@@ -1,0 +1,143 @@
+.root {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-4);
+  padding-top: var(--space-6);
+  border-top: 1px solid var(--color-border-subtle);
+}
+
+.heading {
+  margin: 0;
+  font-size: var(--text-4);
+  letter-spacing: var(--tracking-tight);
+}
+
+.form {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: var(--space-3);
+  align-items: center;
+}
+
+.selection {
+  grid-column: 1 / -1;
+  margin: 0;
+  font-size: var(--text-1);
+  color: var(--color-text);
+}
+
+.selectionText {
+  font-size: var(--text-2);
+  color: var(--color-accent-text);
+}
+
+.clear {
+  padding: 0;
+  font-family: inherit;
+  font-size: var(--text-1);
+  color: var(--color-text);
+  text-decoration: underline;
+  cursor: pointer;
+  background: none;
+  border: none;
+  border-radius: var(--radius-1);
+}
+
+.field {
+  display: flex;
+}
+
+.input {
+  width: 100%;
+  padding: var(--space-3) var(--space-4);
+  font-family: inherit;
+  font-size: var(--text-2);
+  color: var(--color-text-strong);
+  background-color: var(--color-bg-subtle);
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-2);
+}
+
+.input::placeholder {
+  color: var(--color-text);
+  opacity: 0.6;
+}
+
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: 0;
+  margin: 0;
+  list-style: none;
+}
+
+.card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  padding: var(--space-4);
+  background-color: var(--color-bg-subtle);
+  border: 1px solid var(--color-border-subtle);
+  border-radius: var(--radius-3);
+}
+
+.cardHeader {
+  display: flex;
+  gap: var(--space-4);
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.question {
+  max-width: 60ch;
+  margin: 0;
+  font-size: var(--text-2);
+  font-weight: var(--weight-medium);
+  line-height: var(--leading-normal);
+  color: var(--color-text-strong);
+}
+
+.cardMeta {
+  display: flex;
+  flex-shrink: 0;
+  gap: var(--space-2);
+  align-items: center;
+}
+
+.answer {
+  max-width: 68ch;
+  margin: 0;
+  font-size: var(--text-2);
+  line-height: var(--leading-normal);
+  color: var(--color-text);
+  white-space: pre-wrap;
+}
+
+.pending {
+  font-size: var(--text-1);
+  color: var(--color-pending-text);
+}
+
+.failed {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+  align-items: flex-start;
+}
+
+.failedText {
+  margin: 0;
+  font-size: var(--text-1);
+  line-height: var(--leading-normal);
+  color: var(--color-danger-text);
+}
+
+.srOnly {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  overflow: hidden;
+  white-space: nowrap;
+  clip-path: inset(50%);
+}

@@ -29,6 +29,14 @@
   --color-accent-solid: var(--purple-9);
   --color-focus-ring: var(--purple-8);
 
+  /* status — same step contract, so these need no dark counterpart either */
+  --color-pending-surface: var(--amber-a3);
+  --color-pending-border: var(--amber-a6);
+  --color-pending-text: var(--amber-11);
+  --color-danger-surface: var(--red-a3);
+  --color-danger-border: var(--red-a6);
+  --color-danger-text: var(--red-11);
+
   /* elevation */
   --shadow-color: var(--black-a4);
   --shadow-color-ambient: var(--black-a3);

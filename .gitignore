@@ -21,6 +21,9 @@ generated
 cdk.out
 .cdk.staging
 
+# playwright-cli session artifacts (snapshots, screenshots)
+.playwright-cli
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json
