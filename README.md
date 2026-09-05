@@ -125,8 +125,18 @@ A `frontend` preview deploys only a bucket and a distribution, and points `/api/
 **production** API through the function-URL ARN `ThaiLerDevSiteStack` exports — so it reads
 and writes production data. A `full-stack` preview gets its own table and Lambdas instead.
 
-Previews are wired but **not yet automated**: the CDK side is in place, and the label-driven
-workflow that deploys and destroys them per pull request is still to come.
+### Previews
+
+Add the `preview:frontend` or `preview:full-stack` label to a pull request to get a preview at
+`https://pr-<n>.thai.ler.dev`. `preview:frontend` points `/api/*` at the **production** API, so
+it reads and writes production data. `preview:full-stack` gets its own table and Lambdas,
+seeded with the demo fixtures, and its worker runs the fake model — translations come back as
+deterministic `[fake]` output and never call Anthropic.
+
+The first deploy takes 5–10 minutes for CloudFront to come up, plus a little DNS/TLS lag on
+top of that. Remove the label or close the PR to tear the preview down; deletion takes another
+5–15 minutes, so re-labelling inside that window fails. Setting both labels at once is an
+error. Fork PRs never get a preview.
 
 Cross-stack values move through explicit CloudFormation exports rather than CDK's automatic
 ones, because `cdk.json` sets `@aws-cdk/core:defaultCrossStackReferences` to `"weak"`.
@@ -163,7 +173,9 @@ CI runs lint, typecheck, build and the Playwright suite on every pull request
 (`.github/workflows/ci.yml`), and on a push to `main` runs the same sequence before deploying
 `ThaiLerDevSharedStack` and `ThaiLerDevSiteStack` (`.github/workflows/deploy.yml`). The e2e
 step sits before the AWS credentials step on purpose: a red suite stops the run before it can
-reach the account.
+reach the account. A third workflow, `.github/workflows/preview.yml`, is label-driven and does
+**not** gate on lint/typecheck/build/e2e — `ci.yml` already runs those on the same PR, and a
+preview exists to be looked at while the code is still red.
 
 To deploy manually:
 

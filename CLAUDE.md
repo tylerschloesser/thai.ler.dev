@@ -18,7 +18,7 @@ rather than waiting for it to load.
 | `web-ui.md` | `apps/web/src/**/*.{tsx,css}`, `index.html`, `vite.config.ts` | Base UI, CSS Modules, tokens, dark mode, a11y, routes, PWA |
 | `schema.md` | `packages/schema/**`, `apps/api/src/normalize.ts` | shared zod, what a client may write |
 | `api.md` | `apps/api/**`, `infra/cdk/lib/api.ts` | auth seam, key shapes, idempotency, worker timeouts, sync |
-| `cdk.md` | `infra/cdk/**`, `.github/workflows/**` | stacks, the CloudFront gotchas, AWS access, secrets |
+| `cdk.md` | `infra/cdk/**`, `.github/workflows/**` | stacks, the CloudFront gotchas, AWS access, secrets, previews |
 | `testing.md` | `e2e/**`, `apps/api/src/local.ts` and its fixtures/fake model/memory store | the Playwright e2e suite, the fake-model contract, selector gotchas |
 
 Skills: `file-issue` turns a side finding into a deduped GitHub issue; `/research-issue` turns

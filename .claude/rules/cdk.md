@@ -6,7 +6,7 @@ paths:
 
 # infra/cdk and AWS
 
-Loaded when you touch `infra/cdk/` or the GitHub workflow that deploys it.
+Loaded when you touch `infra/cdk/` or the GitHub workflows that deploy it.
 
 - ESM + `nodenext`: relative imports use `.js` extensions even though the sources are `.ts`
   (`import { SiteStack } from '../lib/site-stack.js'`). The app runs through `tsx`.
@@ -17,18 +17,17 @@ Loaded when you touch `infra/cdk/` or the GitHub workflow that deploys it.
   API and the production site) and `ThaiLerDevGithubOidcStack`. `ThaiLerDevPreview<n>Stack`
   is added by `bin/app.ts` only when `-c pr=<n>` is passed, with `-c preview=frontend` or
   `-c preview=full-stack`; a bare `cdk list` must keep showing exactly the three.
-  **No preview stack has ever been deployed** — both modes are `cdk synth`-verified only, and
-  there is no `preview.yml` yet. Treat the first real `cdk deploy ThaiLerDevPreview<n>Stack`
-  as unproven, not as a regression if it surprises you. Delete this sentence when it lands.
+  **No preview stack has ever been deployed** — both modes are `cdk synth`-verified only.
+  Treat the first real `cdk deploy ThaiLerDevPreview<n>Stack` as unproven, not as a regression
+  if it surprises you. Delete this sentence when it lands.
 - Cross-stack values travel through **explicit** `CfnOutput { exportName }` and
   `Fn.importValue`, not CDK's automatic references, because `cdk.json` sets
   `@aws-cdk/core:defaultCrossStackReferences: "weak"`. The three names are in `lib/dns.ts`
   (`CERT_EXPORT`, `API_URL_EXPORT`, `API_ARN_EXPORT`); a preview stack's own outputs carry no
   `exportName`, because two previews would collide on it.
 - `addSite` (`lib/site.ts`) reads `apps/web/dist` and throws if it's missing, so run
-  `pnpm build` before `cdk synth` or `cdk deploy`. A preview is torn down with
-  `aws cloudformation delete-stack`, never `cdk destroy`, so CI never has to build the app
-  just to delete a stack.
+  `pnpm build` before `cdk synth` or `cdk deploy`. That is why a preview is torn down with
+  `delete-stack` and not `cdk destroy` — see **Previews**.
 - `esbuild` is a **root** devDependency, not `infra/cdk`'s: `NodejsFunction` runs the bundler
   from the workspace root (where the lockfile is), so that is where the binary must resolve.
   Without it CDK silently falls back to Docker bundling. Root `package.json` records this in a
@@ -86,10 +85,9 @@ Local access is SSO: `aws sso login --profile admin`, then prefix commands with
 request. It touches no AWS credentials at all: the suite runs against the in-process API.
 
 CI (`.github/workflows/deploy.yml`) deploys `ThaiLerDevSharedStack ThaiLerDevSiteStack` on
-push to `main` via OIDC, assuming the role in the repo variable `AWS_DEPLOY_ROLE_ARN`. It
-runs the same
-lint/typecheck/build/`test:e2e` sequence **before** `configure-aws-credentials`, so a red
-suite stops the run before it can reach the account. Deploying by hand means naming the
+push to `main` via OIDC, assuming the role in the repo variable `AWS_DEPLOY_ROLE_ARN`. It runs
+the same lint/typecheck/build/`test:e2e` sequence **before** `configure-aws-credentials`, so a
+red suite stops the run before it can reach the account. Deploying by hand means naming the
 stacks, because the root `pnpm deploy` runs `cdk deploy` with no stack argument.
 
 The Anthropic API key lives in the Secrets Manager secret `thai-ler-dev/anthropic`, created
@@ -106,3 +104,33 @@ because whether a run needs it is only known once Claude has read the request. K
 steps in sync with `ci.yml` and `deploy.yml`. Because it also triggers on `issues: opened`, an
 issue whose body contains `@claude` starts a run when created, which is why the issue-filing
 skills forbid the phrase.
+
+## Previews
+
+`.github/workflows/preview.yml`, driven by the labels `preview:frontend` and
+`preview:full-stack`. Exactly one may be set: both at once posts a conflict comment and fails
+the run rather than picking one.
+
+- Both conditions read `github.event.pull_request.labels`, never `github.event.label` — on an
+  `unlabeled` event `pull_request.labels` has already dropped the removed label, which is the
+  state the destroy condition needs to see.
+- Every AWS job requires `pull_request.head.repo.full_name == github.repository`: a fork gets
+  no OIDC token, so without it the job would fail at `configure-aws-credentials` rather than
+  skip cleanly.
+- All three deploy flags are load-bearing. `--exclusively`, because this role can assume the
+  CDK bootstrap roles, so a run that pulled in a dependency stack could deploy unreviewed PR
+  code to production. `--outputs-file "$GITHUB_WORKSPACE/preview-outputs.json"` must be
+  **absolute**, because `pnpm --filter cdk exec` runs in `infra/cdk/` while the seed step that
+  reads it runs at the repo root. `-c modelProvider=fake`, because the Anthropic key has no
+  credit and a full-stack preview on the real model would land every translation `Failed`;
+  the cost is that a preview never exercises the Anthropic path.
+- The seed step runs **after** `configure-aws-credentials` and inherits its `AWS_REGION`:
+  `pnpm --filter api seed` talks to DynamoDB directly, not through CDK, and the OIDC role's
+  `dynamodb:PutItem` on `ThaiLerDevPreview*` is what lets it.
+- `concurrency: preview-<pr>` with `cancel-in-progress: false` — a run cancelled
+  mid-CloudFormation leaves the stack `*_IN_PROGRESS` for a human to dig out.
+- `destroy` runs `describe-stacks` first, so a closed PR that never had a preview does not
+  claim it destroyed one, then `delete-stack` without `--wait`. CloudFront deletion takes
+  5-15 minutes, so re-labelling inside that window fails on `DELETE_IN_PROGRESS`.
+- One sticky `gh pr comment --edit-last --create-if-none` per PR. It is the only place a human
+  is told that a frontend preview reads and writes **production data**.
