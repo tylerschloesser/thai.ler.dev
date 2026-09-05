@@ -37,7 +37,7 @@ just setting `status` back to `pending`.
 you closed the tab is still running when you reopen it, because `status`/`error` are
 synced fields. That is also what makes the offline story work at all.
 
-Offline has two halves, and they are separate mechanisms:
+Offline is three separate mechanisms, and all three are needed:
 
 | | Mechanism |
 | --- | --- |
@@ -76,7 +76,7 @@ client has no base URL and mutations never trigger a CORS preflight.
 | `lint`      | Lint the repo with oxlint and stylelint           |
 | `lint:fix`  | Apply the autofixable lint fixes                  |
 | `synth`     | Synthesize the CDK app                            |
-| `deploy`    | Deploy the CDK app                                |
+| `deploy`    | Deploy the CDK app — prefer naming the stack (below) |
 
 ## Frontend
 
@@ -91,8 +91,9 @@ client has no base URL and mutations never trigger a CORS preflight.
 
 Two things are enforced rather than documented: CSS Module class names are type-checked
 (`@css-modules-kit` generates `.d.ts` during `typecheck`/`build`, so `styles.typo` fails to
-compile), and stylelint rejects raw hex or px values in any `*.module.css` — values there must
-be tokens. See `CLAUDE.md` for the full conventions.
+compile), and stylelint rejects raw hex/rgb/hsl on colour properties and raw px on spacing and
+radius properties in any `*.module.css`. Hairline `border` widths stay literal px. See
+`CLAUDE.md` for the full conventions.
 
 ## Dependency versions
 
@@ -144,19 +145,20 @@ Already done:
 - CDK bootstrap in `us-east-1`
 - `AWS_PROFILE=admin pnpm --filter cdk exec cdk deploy ThaiLerDevGithubOidcStack`
 - `gh variable set AWS_DEPLOY_ROLE_ARN --body arn:aws:iam::063257577013:role/thai-ler-dev-github-deploy`
+- The Anthropic API key in the Secrets Manager secret `thai-ler-dev/anthropic`, read at cold
+  start and deliberately never in CDK source or a Lambda environment variable.
 
-Still required — the Anthropic API key. It is read from Secrets Manager at cold start and
-is deliberately not in CDK source or a Lambda environment variable:
+To rotate the key:
 
 ```
-AWS_PROFILE=admin aws secretsmanager create-secret \
-  --name thai-ler-dev/anthropic \
+AWS_PROFILE=admin aws secretsmanager put-secret-value \
+  --secret-id thai-ler-dev/anthropic \
   --secret-string 'sk-ant-...' \
   --region us-east-1
 ```
 
-Until it exists, translations will come back `failed` with a Secrets Manager error —
-the rest of the app (sync, offline, storage) works without it.
+If the secret is missing or wrong, translations come back `failed` with a Secrets Manager
+error; the rest of the app (sync, offline, storage) keeps working.
 
 ## Auth
 
