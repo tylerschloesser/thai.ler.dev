@@ -69,5 +69,9 @@ stylelint config.
   without it a reload with no connection never boots the app that would read the persisted
   cache. It is **not registered under `pnpm dev`** (no `devOptions`), so anything about the
   shell is tested against `pnpm build` + `vite preview`, which the `verify-offline` skill
-  does. Files with build-stable names must stay in the `UNVERSIONED` list in
-  `infra/cdk/lib/site-stack.ts` so they deploy `no-cache` (`.claude/rules/cdk.md`).
+  does. `vite preview` proxies `/api` exactly like `vite dev` does, both from the same
+  `apiProxy` in `vite.config.ts`, so a built app under `preview` talks to the same local
+  backend. `API_TARGET` overrides the proxy target (default `http://localhost:8787`, the
+  local API); `pnpm dev:prod` sets it to production. Files with build-stable names must stay
+  in the `UNVERSIONED` list in `infra/cdk/lib/site-stack.ts` so they deploy `no-cache`
+  (`.claude/rules/cdk.md`).

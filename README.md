@@ -61,16 +61,24 @@ pnpm install
 pnpm dev
 ```
 
-`pnpm dev` proxies `/api/*` to the deployed API (`vite.config.ts`), so the UI runs locally
-against real data with no local DynamoDB to stand up. In production that same path is a
-CloudFront behavior on this distribution — the API is always same-origin, which is why the
-client has no base URL and mutations never trigger a CORS preflight.
+`pnpm dev` starts both processes: the local API (`apps/api/src/local.ts`) on
+`http://localhost:8787` — an in-memory store, a fake model, seeded demo rows, partitioned by
+the `x-id-token` header — and the web app on `http://localhost:5173`, proxying `/api` to it
+(`vite.config.ts`). Nothing local touches AWS or production data.
+
+`pnpm dev:prod` (or `API_TARGET=... pnpm --filter web dev`) runs the web app against the
+**deployed** API instead. Everything you do there is a production read or write.
+
+In production `/api` is a CloudFront behavior on the same distribution — the API is always
+same-origin, which is why the client has no base URL and mutations never trigger a CORS
+preflight.
 
 ## Scripts
 
 | Script      | Description                                       |
 | ----------- | ------------------------------------------------- |
-| `dev`       | Run the web app locally                           |
+| `dev`       | Run the local API and the web app together        |
+| `dev:prod`  | Run the web app against the deployed API          |
 | `build`     | Build all packages                                |
 | `typecheck` | Type-check all packages                           |
 | `lint`      | Lint the repo with oxlint and stylelint           |

@@ -26,8 +26,10 @@ a topic into an executable spec issue; `verify-offline` walks the five browser-o
 
 ## Always true
 
-- **`pnpm dev` proxies `/api` to the deployed site.** There is no local backend, so local UI
-  work reads and writes **production data**. That is deliberate; know it before you click.
+- **`pnpm dev` runs the API in-process** (`apps/api/src/local.ts` — memory store, fake model,
+  `x-id-token` user) alongside the web app, so nothing local touches production.
+  `pnpm dev:prod` (or `API_TARGET=https://thai.ler.dev`) proxies to the deployed API and
+  reads and writes **production data**.
 - Dependency versions live in the `catalog:` block of `pnpm-workspace.yaml`. Manifests say
   `"catalog:"`, never a semver range.
 - `erasableSyntaxOnly` and `verbatimModuleSyntax` are on: no `enum`, no constructor parameter

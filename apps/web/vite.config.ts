@@ -3,6 +3,15 @@ import react from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
 import { VitePWA } from 'vite-plugin-pwa'
 
+// Mirrors the CloudFront `/api/*` behavior so the client uses one same-origin
+// path everywhere and needs no base URL. The default target is the local API
+// from `pnpm --filter api start` — no AWS, no production data. `API_TARGET`
+// overrides it; `pnpm dev:prod` sets it to `https://thai.ler.dev` to run
+// against production, where local writes become production writes.
+const apiProxy = {
+  '/api': { target: process.env.API_TARGET ?? 'http://localhost:8787', changeOrigin: true },
+}
+
 // https://vite.dev/config/
 export default defineConfig({
   plugins: [
@@ -42,12 +51,9 @@ export default defineConfig({
     }),
   ],
   server: {
-    proxy: {
-      // Mirrors the CloudFront `/api/*` behavior so the client uses one
-      // same-origin path everywhere and needs no base URL. Local UI work runs
-      // against the deployed API — there is no local DynamoDB to stand up, and
-      // the request path being exercised is the real one.
-      '/api': { target: 'https://thai.ler.dev', changeOrigin: true },
-    },
+    proxy: apiProxy,
+  },
+  preview: {
+    proxy: apiProxy,
   },
 })
