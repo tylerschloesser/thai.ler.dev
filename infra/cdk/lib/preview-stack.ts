@@ -65,7 +65,13 @@ export class PreviewStack extends Stack {
     })
 
     // A weekly janitor uses this tag to find and tear down abandoned previews.
+    // Both lines are needed and they tag different things: `Tags.of` writes the
+    // tag into every taggable *resource* in the template, while `this.tags` is
+    // what puts it on the CloudFormation *stack* — and a janitor listing
+    // abandoned previews looks at stacks. `Tags.of(stack)` alone leaves
+    // `describe-stacks` reporting `Tags: []`.
     Tags.of(this).add('thai-ler-dev:pr', String(props.pr))
+    this.tags.setTag('thai-ler-dev:pr', String(props.pr))
 
     // No `exportName` on any of these: two previews synth side by side and
     // must never collide on an export name.
