@@ -4,6 +4,10 @@
 # workflow assumes) is deliberately NOT deployed here — CI can't grant
 # itself the trust it needs to run (chicken-and-egg). That stack is
 # applied once, locally, via `cdk deploy` before this workflow can work.
+#
+# The lint/typecheck/build/e2e steps gate the deploy: nothing reaches
+# production that CI would have failed. Keep them in sync with ci.yml and
+# claude.yml.
 
 name: Deploy
 
@@ -37,6 +41,28 @@ jobs:
       - run: pnpm lint
       - run: pnpm typecheck
       - run: pnpm build
+
+      # After build, before credentials: the suite needs `apps/web/dist`, and
+      # a failure here must stop the run before it can touch AWS.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - run: pnpm --filter e2e exec playwright install --with-deps chromium
+
+      - run: pnpm test:e2e
+        env:
+          CI: '1'
+
+      - if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            e2e/playwright-report
+            e2e/test-results
+          retention-days: 7
 
       - uses: aws-actions/configure-aws-credentials@v6
         with:

@@ -48,7 +48,8 @@ jobs:
         with:
           fetch-depth: 1
 
-      # Same toolchain as deploy.yml, so pnpm lint/typecheck/build work in the run.
+      # Same toolchain as ci.yml and deploy.yml, so pnpm lint/typecheck/build
+      # and the e2e suite all work in the run.
       - uses: pnpm/action-setup@v6
 
       - uses: actions/setup-node@v7
@@ -58,8 +59,17 @@ jobs:
 
       - run: pnpm install --frozen-lockfile
 
+      # Unconditional, because whether the run wants `pnpm test:e2e` is only
+      # known once Claude has read the request.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('pnpm-lock.yaml') }}
+
+      - run: pnpm --filter e2e exec playwright install --with-deps chromium
+
       - uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
           claude_args: |
-            --allowedTools "Bash(pnpm lint),Bash(pnpm lint:fix),Bash(pnpm typecheck),Bash(pnpm build)"
+            --allowedTools "Bash(pnpm lint),Bash(pnpm lint:fix),Bash(pnpm typecheck),Bash(pnpm build),Bash(pnpm test:e2e:*)"

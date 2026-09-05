@@ -58,10 +58,15 @@ rewrites URIs containing no `.`, so a genuinely missing asset still 404s.
 Local access is SSO: `aws sso login --profile admin`, then prefix commands with
 `AWS_PROFILE=admin`. Account `063257577013`.
 
+`.github/workflows/ci.yml` runs lint → typecheck → build → `pnpm test:e2e` on every pull
+request. It touches no AWS credentials at all: the suite runs against the in-process API.
+
 CI (`.github/workflows/deploy.yml`) deploys `ThaiLerDevSiteStack` on push to `main` via OIDC,
-assuming the role in the repo variable `AWS_DEPLOY_ROLE_ARN`. Deploying by hand means naming
-the stack, because the root `pnpm deploy` runs `cdk deploy` with no stack argument and the
-app has two.
+assuming the role in the repo variable `AWS_DEPLOY_ROLE_ARN`. It runs the same
+lint/typecheck/build/`test:e2e` sequence **before** `configure-aws-credentials`, so a red
+suite stops the run before it can reach the account. Deploying by hand means naming the
+stack, because the root `pnpm deploy` runs `cdk deploy` with no stack argument and the app
+has two.
 
 The Anthropic API key lives in the Secrets Manager secret `thai-ler-dev/anthropic`, created
 out of band and imported by name — never in CDK source or a Lambda environment variable.
@@ -70,7 +75,9 @@ out of band and imported by name — never in CDK source or a Lambda environment
 in interactive mode on `@claude` mentions and authenticates with the `CLAUDE_CODE_OAUTH_TOKEN`
 repository secret: a subscription token from `claude setup-token`, chosen over an API key
 because the account's API key carries no credit. The Claude GitHub App must be installed on
-the repo for it to comment or open PRs. It installs pnpm and dependencies before the Claude
-step so `pnpm lint`, `typecheck` and `build` work in the run; keep those steps in sync with
-`deploy.yml`. Because it also triggers on `issues: opened`, an issue whose body contains
+the repo for it to comment or open PRs. It installs pnpm, dependencies and the Playwright chromium
+build before the Claude step so `pnpm lint`, `typecheck`, `build` and `test:e2e` all work in
+the run — `test:e2e` is in `--allowedTools`, and the browser install is unconditional because
+whether a run needs it is only known once Claude has read the request. Keep those steps in
+sync with `ci.yml` and `deploy.yml`. Because it also triggers on `issues: opened`, an issue whose body contains
 `@claude` starts a run when created, which is why the issue-filing skills forbid the phrase.

@@ -36,11 +36,12 @@ a topic into an executable spec issue; `verify-offline` walks the five browser-o
 - `erasableSyntaxOnly` and `verbatimModuleSyntax` are on: no `enum`, no constructor parameter
   properties (assign fields in the body), and `import type` for types.
 - No formatter. Match the surrounding style: no semicolons, single quotes.
-- **There is no unit-test framework**, and **CI still runs only lint → typecheck → build**, so
-  `pnpm lint && pnpm typecheck && pnpm build` is necessary and nowhere near sufficient: it
-  cannot fail for any behaviour this app exists for. The offline paths only break in a real
-  browser, which is what `pnpm test:e2e` (Playwright, `testing.md`) and `verify-offline` are
-  for. Run both after touching `apps/web/src/db/` or the service worker.
+- **There is no unit-test framework**, and `pnpm lint && pnpm typecheck && pnpm build` cannot
+  fail for any behaviour this app exists for: the offline paths only break in a real browser.
+  `pnpm test:e2e` (Playwright, `testing.md`) is what covers them, and CI runs it — `ci.yml` on
+  every PR, `deploy.yml` after build and before it touches AWS. It still isn't everything;
+  `verify-offline` covers what only a human can eyeball. Run both after touching
+  `apps/web/src/db/` or the service worker.
 - Deploy by naming the stack; the root `pnpm deploy` is ambiguous across two stacks:
   `pnpm build && AWS_PROFILE=admin pnpm --filter cdk exec cdk deploy ThaiLerDevSiteStack`.
 
