@@ -223,3 +223,5 @@ Not built yet, but the seams are in place so adding it is additive:
   10k MAU for social-IdP users. Credentials never touch this codebase.
 - Sign-out must call `clearPersistedState()` (in `db/queryClient.ts`) — clearing the
   in-memory client alone would leave one user's rows in IndexedDB on a shared device.
+
+<!-- throwaway branch: exercises .github/workflows/preview.yml end to end. Do not merge. -->
