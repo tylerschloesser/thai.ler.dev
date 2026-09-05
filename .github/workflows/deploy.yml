@@ -1,0 +1,47 @@
+# Deploys ThaiLerDevSiteStack on every push to main.
+#
+# ThaiLerDevGithubOidcStack (the OIDC provider + deploy role that this
+# workflow assumes) is deliberately NOT deployed here — CI can't grant
+# itself the trust it needs to run (chicken-and-egg). That stack is
+# applied once, locally, via `cdk deploy` before this workflow can work.
+
+name: Deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+concurrency:
+  group: deploy-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm build
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-actions-deploy
+
+      - run: pnpm --filter cdk exec cdk deploy ThaiLerDevSiteStack --require-approval never

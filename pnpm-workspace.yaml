@@ -1,0 +1,30 @@
+packages:
+  - apps/*
+  - infra/*
+
+catalogMode: prefer
+
+catalog:
+  # web
+  react: ^19.2.8
+  react-dom: ^19.2.8
+  '@types/react': ^19.2.18
+  '@types/react-dom': ^19.2.4
+  '@vitejs/plugin-react': ^6.1.0
+  vite: ^8.2.2
+  # infra
+  aws-cdk-lib: ^2.268.0
+  aws-cdk: ^2.1140.0
+  constructs: ^10.8.1
+  tsx: ^4.20.3
+  # shared
+  typescript: ~6.0.2
+  oxlint: ^1.81.0
+  '@types/node': ^24.13.3
+
+minimumReleaseAgeExclude:
+  - aws-cdk@2.1140.0
+
+allowBuilds:
+  # transitive dep of the aws-cdk CLI; its postinstall links the platform binary
+  esbuild: true

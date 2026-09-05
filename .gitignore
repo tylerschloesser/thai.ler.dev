@@ -11,6 +11,12 @@ node_modules
 dist
 dist-ssr
 *.local
+*.tsbuildinfo
+.pnpm-store
+
+# CDK
+cdk.out
+.cdk.staging
 
 # Editor directories and files
 .vscode/*
