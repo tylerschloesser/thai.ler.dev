@@ -17,6 +17,9 @@ Loaded when you touch `infra/cdk/` or the GitHub workflow that deploys it.
   API and the production site) and `ThaiLerDevGithubOidcStack`. `ThaiLerDevPreview<n>Stack`
   is added by `bin/app.ts` only when `-c pr=<n>` is passed, with `-c preview=frontend` or
   `-c preview=full-stack`; a bare `cdk list` must keep showing exactly the three.
+  **No preview stack has ever been deployed** — both modes are `cdk synth`-verified only, and
+  there is no `preview.yml` yet. Treat the first real `cdk deploy ThaiLerDevPreview<n>Stack`
+  as unproven, not as a regression if it surprises you. Delete this sentence when it lands.
 - Cross-stack values travel through **explicit** `CfnOutput { exportName }` and
   `Fn.importValue`, not CDK's automatic references, because `cdk.json` sets
   `@aws-cdk/core:defaultCrossStackReferences: "weak"`. The three names are in `lib/dns.ts`

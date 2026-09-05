@@ -125,6 +125,9 @@ A `frontend` preview deploys only a bucket and a distribution, and points `/api/
 **production** API through the function-URL ARN `ThaiLerDevSiteStack` exports — so it reads
 and writes production data. A `full-stack` preview gets its own table and Lambdas instead.
 
+Previews are wired but **not yet automated**: the CDK side is in place, and the label-driven
+workflow that deploys and destroys them per pull request is still to come.
+
 Cross-stack values move through explicit CloudFormation exports rather than CDK's automatic
 ones, because `cdk.json` sets `@aws-cdk/core:defaultCrossStackReferences` to `"weak"`.
 
