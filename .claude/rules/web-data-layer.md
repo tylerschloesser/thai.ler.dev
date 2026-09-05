@@ -67,7 +67,17 @@ silently drop every write.
 
 ## Verifying a change here
 
-Lint, typecheck and build cannot fail for any of the above. After touching `src/db/`, the
-route loaders, or the service worker config in `vite.config.ts`, run the `verify-offline`
-skill: offline cold start, outbox drain on reconnect, optimistic rows surviving an offline
-reload, multi-tab leader election, and the failed-row retry.
+Lint, typecheck and build cannot fail for any of the above. Two things do, and neither
+subsumes the other. After touching `src/db/`, the route loaders, or the service worker config
+in `vite.config.ts`, run both.
+
+`pnpm test:e2e` (`.claude/rules/testing.md`) covers the offline cold start, an offline write
+queuing, the outbox draining on reconnect, leader election, and the failed-row retry. CI runs
+it on every PR.
+
+The `verify-offline` skill covers the rest, in a real browser: Playwright's `setOffline` is
+not a real network drop. Note that its **check 2 fails today on
+[#1](https://github.com/tylerschloesser/thai.ler.dev/issues/1)** — that is the app, not the
+walk. Issues [#1](https://github.com/tylerschloesser/thai.ler.dev/issues/1) and
+[#2](https://github.com/tylerschloesser/thai.ler.dev/issues/2) say what neither covers today:
+a second offline reload comes back empty, and a finished row never reaches the home list.

@@ -42,8 +42,10 @@ a topic into an executable spec issue; `verify-offline` walks the five browser-o
   every PR, `deploy.yml` after build and before it touches AWS. It still isn't everything;
   `verify-offline` covers what only a human can eyeball. Run both after touching
   `apps/web/src/db/` or the service worker.
-- Deploy by naming the stack; the root `pnpm deploy` is ambiguous across two stacks:
-  `pnpm build && AWS_PROFILE=admin pnpm --filter cdk exec cdk deploy ThaiLerDevSiteStack`.
+- Deploy by naming the stacks; the root `pnpm deploy` is ambiguous across three:
+  `pnpm build && AWS_PROFILE=admin pnpm --filter cdk exec cdk deploy ThaiLerDevSharedStack
+  ThaiLerDevSiteStack`. A fourth, `ThaiLerDevPreview<n>Stack`, exists only when
+  `-c pr=<n> -c preview=frontend|full-stack` is passed.
 
 ## How to work
 

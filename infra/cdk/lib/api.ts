@@ -34,6 +34,12 @@ const commonFunctionProps = {
 /** Makes the bundled source maps show up in stack traces. */
 const SOURCE_MAPS = { NODE_OPTIONS: '--enable-source-maps' }
 
+export interface ApiProps {
+  readonly removalPolicy: RemovalPolicy
+  readonly pointInTimeRecovery: boolean
+  readonly modelProvider?: string
+}
+
 /**
  * The whole backend: one table, one request-path function, one worker.
  *
@@ -41,6 +47,11 @@ const SOURCE_MAPS = { NODE_OPTIONS: '--enable-source-maps' }
  * function URL behind the site's existing CloudFront distribution, which means
  * no per-request charge at idle and — because `/api/*` is same-origin — no CORS
  * and no preflight on any mutation.
+ *
+ * A preview stack passes its own throwaway `removalPolicy`/`pointInTimeRecovery`
+ * (`DESTROY`, no PITR) so its table is disposable, while prod keeps `RETAIN`
+ * and PITR. `modelProvider` lets a preview's worker run against the fake model
+ * instead of calling Anthropic.
  */
 export class Api extends Construct {
   readonly table: dynamodb.TableV2
@@ -48,7 +59,7 @@ export class Api extends Construct {
   /** Exposed so the stack can grant CloudFront the second invoke permission. */
   readonly handler: nodejs.NodejsFunction
 
-  constructor(scope: Construct, id: string) {
+  constructor(scope: Construct, id: string, props: ApiProps) {
     super(scope, id)
 
     this.table = new dynamodb.TableV2(this, 'Table', {
@@ -66,8 +77,8 @@ export class Api extends Construct {
       ],
       timeToLiveAttribute: 'expiresAt',
       billing: dynamodb.Billing.onDemand(),
-      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: true },
-      removalPolicy: RemovalPolicy.RETAIN,
+      pointInTimeRecoverySpecification: { pointInTimeRecoveryEnabled: props.pointInTimeRecovery },
+      removalPolicy: props.removalPolicy,
     })
 
     const anthropicSecret = secretsmanager.Secret.fromSecretNameV2(
@@ -87,6 +98,7 @@ export class Api extends Construct {
         ...SOURCE_MAPS,
         TABLE_NAME: this.table.tableName,
         ANTHROPIC_SECRET_ARN: anthropicSecret.secretArn,
+        ...(props.modelProvider ? { MODEL_PROVIDER: props.modelProvider } : {}),
       },
     })
 

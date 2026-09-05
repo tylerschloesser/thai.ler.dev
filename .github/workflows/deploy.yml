@@ -1,4 +1,4 @@
-# Deploys ThaiLerDevSiteStack on every push to main.
+# Deploys ThaiLerDevSharedStack and ThaiLerDevSiteStack on every push to main.
 #
 # ThaiLerDevGithubOidcStack (the OIDC provider + deploy role that this
 # workflow assumes) is deliberately NOT deployed here — CI can't grant
@@ -70,4 +70,4 @@ jobs:
           aws-region: us-east-1
           role-session-name: github-actions-deploy
 
-      - run: pnpm --filter cdk exec cdk deploy ThaiLerDevSiteStack --require-approval never
+      - run: pnpm --filter cdk exec cdk deploy ThaiLerDevSharedStack ThaiLerDevSiteStack --require-approval never
