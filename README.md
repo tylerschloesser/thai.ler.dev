@@ -26,14 +26,31 @@ pnpm dev
 
 ## Scripts
 
-| Script      | Description                              |
-| ----------- | ----------------------------------------- |
-| `dev`       | Run the web app locally                   |
-| `build`     | Build all packages                        |
-| `typecheck` | Type-check all packages                   |
-| `lint`      | Lint the repo with oxlint                 |
-| `synth`     | Synthesize the CDK app                    |
-| `deploy`    | Deploy the CDK app                        |
+| Script      | Description                                       |
+| ----------- | ------------------------------------------------- |
+| `dev`       | Run the web app locally                           |
+| `build`     | Build all packages                                |
+| `typecheck` | Type-check all packages                           |
+| `lint`      | Lint the repo with oxlint and stylelint           |
+| `lint:fix`  | Apply the autofixable lint fixes                  |
+| `synth`     | Synthesize the CDK app                            |
+| `deploy`    | Deploy the CDK app                                |
+
+## Frontend
+
+`apps/web` styles with CSS Modules over a two-layer token system:
+
+- `src/styles/primitives.css` imports [Radix Colors](https://www.radix-ui.com/colors) directly.
+  Dark mode is Radix's `.dark` class, set from `prefers-color-scheme` by an inline script in
+  `index.html` so it lands before first paint.
+- `src/styles/tokens.css` aliases those scales to semantic names (`--color-text`,
+  `--color-border`) alongside the spacing, radius, type and motion scales. Components reference
+  only this layer.
+
+Two things are enforced rather than documented: CSS Module class names are type-checked
+(`@css-modules-kit` generates `.d.ts` during `typecheck`/`build`, so `styles.typo` fails to
+compile), and stylelint rejects raw hex or px values in any `*.module.css` — values there must
+be tokens. See `CLAUDE.md` for the full conventions.
 
 ## Dependency versions
 

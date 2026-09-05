@@ -4,7 +4,21 @@
     <meta charset="UTF-8" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Source for thai.ler.dev." />
+    <meta name="theme-color" content="#fdfcfd" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#121113" media="(prefers-color-scheme: dark)" />
     <title>thai.ler.dev</title>
+    <!--
+      Radix Colors scopes its dark scales to `.dark`. Setting the class here,
+      before first paint, is what keeps dark mode from flashing light on load.
+    -->
+    <script>
+      const themeQuery = matchMedia('(prefers-color-scheme: dark)')
+      const applyTheme = () =>
+        document.documentElement.classList.toggle('dark', themeQuery.matches)
+      applyTheme()
+      themeQuery.addEventListener('change', applyTheme)
+    </script>
   </head>
   <body>
     <div id="root"></div>

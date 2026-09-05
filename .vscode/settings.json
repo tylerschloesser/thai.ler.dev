@@ -1,0 +1,8 @@
+{
+  // @css-modules-kit/ts-plugin is a TypeScript language service plugin, so it
+  // only loads when the editor uses the workspace TypeScript rather than its own.
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "css.validate": false,
+  "stylelint.validate": ["css"]
+}

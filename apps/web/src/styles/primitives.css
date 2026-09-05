@@ -1,0 +1,35 @@
+/*
+ * Primitive palette — Radix Colors, imported verbatim.
+ *
+ * Each scale is 12 steps with a fixed per-step contract that holds identically
+ * in light and dark, which is what lets tokens.css alias them once without
+ * branching on theme:
+ *
+ *   1  app background          7  border
+ *   2  subtle background       8  strong border / focus ring
+ *   3  component background    9  solid
+ *   4  component hover        10  solid hover
+ *   5  component active       11  low-contrast text
+ *   6  subtle border          12  high-contrast text
+ *
+ * Light lives on `:root`, dark on `.dark` — the class is set from
+ * prefers-color-scheme by the inline script in index.html.
+ *
+ * Never reference these directly from a component; alias them in tokens.css.
+ * Swapping a hue means editing the imports here plus the aliases there.
+ */
+
+/* neutral */
+@import '@radix-ui/colors/mauve.css';
+@import '@radix-ui/colors/mauve-dark.css';
+@import '@radix-ui/colors/mauve-alpha.css';
+@import '@radix-ui/colors/mauve-dark-alpha.css';
+
+/* accent */
+@import '@radix-ui/colors/purple.css';
+@import '@radix-ui/colors/purple-dark.css';
+@import '@radix-ui/colors/purple-alpha.css';
+@import '@radix-ui/colors/purple-dark-alpha.css';
+
+/* shadows */
+@import '@radix-ui/colors/black-alpha.css';

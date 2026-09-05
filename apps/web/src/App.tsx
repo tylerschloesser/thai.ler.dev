@@ -1,121 +1,102 @@
 import { useState } from 'react'
-import heroImg from './assets/hero.png'
 import reactLogo from './assets/react.svg'
 import viteLogo from './assets/vite.svg'
-import './App.css'
+import { Button } from './components/Button/Button.tsx'
+import { ExternalLink } from './components/ExternalLink/ExternalLink.tsx'
+import { Hero } from './components/Hero/Hero.tsx'
+import {
+  BlueskyIcon,
+  DiscordIcon,
+  DocumentationIcon,
+  GitHubIcon,
+  SocialIcon,
+  XIcon,
+} from './components/icons/icons.tsx'
+import styles from './App.module.css'
 
 function App() {
   const [count, setCount] = useState(0)
 
   return (
-    <>
-      <section id="center">
-        <div className="hero">
-          <img src={heroImg} className="base" width="170" height="179" alt="" />
-          <img src={reactLogo} className="framework" alt="React logo" />
-          <img src={viteLogo} className="vite" alt="Vite logo" />
-        </div>
-        <div>
+    <div className={styles.app}>
+      <section className={styles.center}>
+        <Hero />
+        <div className={styles.intro}>
           <h1>Get started</h1>
           <p>
             Edit <code>src/App.tsx</code> and save to test <code>HMR</code>
           </p>
         </div>
-        <button
-          type="button"
-          className="counter"
-          onClick={() => setCount((count) => count + 1)}
-        >
+        <Button onClick={() => setCount((count) => count + 1)}>
           Count is {count}
-        </button>
+        </Button>
       </section>
 
-      <div className="ticks"></div>
+      <div className={styles.ticks} />
 
-      <section id="next-steps">
-        <div id="docs">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#documentation-icon"></use>
-          </svg>
+      <div className={styles.nextSteps}>
+        <section className={styles.section}>
+          <DocumentationIcon className={styles.sectionIcon} />
           <h2>Documentation</h2>
           <p>Your questions, answered</p>
-          <ul>
+          <ul className={styles.links}>
             <li>
-              <a href="https://vite.dev/" target="_blank">
-                <img className="logo" src={viteLogo} alt="" />
+              <ExternalLink
+                href="https://vite.dev/"
+                icon={<img src={viteLogo} alt="" />}
+              >
                 Explore Vite
-              </a>
+              </ExternalLink>
             </li>
             <li>
-              <a href="https://react.dev/" target="_blank">
-                <img className="button-icon" src={reactLogo} alt="" />
+              <ExternalLink
+                href="https://react.dev/"
+                icon={<img src={reactLogo} alt="" />}
+              >
                 Learn more
-              </a>
+              </ExternalLink>
             </li>
           </ul>
-        </div>
-        <div id="social">
-          <svg className="icon" role="presentation" aria-hidden="true">
-            <use href="/icons.svg#social-icon"></use>
-          </svg>
+        </section>
+
+        <section className={styles.section}>
+          <SocialIcon className={styles.sectionIcon} />
           <h2>Connect with us</h2>
           <p>Join the Vite community</p>
-          <ul>
+          <ul className={styles.links}>
             <li>
-              <a href="https://github.com/vitejs/vite" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#github-icon"></use>
-                </svg>
+              <ExternalLink
+                href="https://github.com/vitejs/vite"
+                icon={<GitHubIcon />}
+              >
                 GitHub
-              </a>
+              </ExternalLink>
             </li>
             <li>
-              <a href="https://chat.vite.dev/" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#discord-icon"></use>
-                </svg>
+              <ExternalLink href="https://chat.vite.dev/" icon={<DiscordIcon />}>
                 Discord
-              </a>
+              </ExternalLink>
             </li>
             <li>
-              <a href="https://x.com/vite_js" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#x-icon"></use>
-                </svg>
+              <ExternalLink href="https://x.com/vite_js" icon={<XIcon />}>
                 X.com
-              </a>
+              </ExternalLink>
             </li>
             <li>
-              <a href="https://bsky.app/profile/vite.dev" target="_blank">
-                <svg
-                  className="button-icon"
-                  role="presentation"
-                  aria-hidden="true"
-                >
-                  <use href="/icons.svg#bluesky-icon"></use>
-                </svg>
+              <ExternalLink
+                href="https://bsky.app/profile/vite.dev"
+                icon={<BlueskyIcon />}
+              >
                 Bluesky
-              </a>
+              </ExternalLink>
             </li>
           </ul>
-        </div>
-      </section>
+        </section>
+      </div>
 
-      <div className="ticks"></div>
-      <section id="spacer"></section>
-    </>
+      <div className={styles.ticks} />
+      <div className={styles.spacer} />
+    </div>
   )
 }
 

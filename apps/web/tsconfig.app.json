@@ -8,7 +8,14 @@
     "jsx": "react-jsx",
     "allowImportingTsExtensions": true,
     "allowArbitraryExtensions": true,
-    "noEmit": true
+    "noEmit": true,
+
+    // `cmk` writes CSS Module types to generated/src/**; rootDirs maps them
+    // onto the source tree so `./X.module.css` resolves to the real .d.ts
+    // instead of Vite's catch-all index signature.
+    "rootDirs": ["${configDir}", "${configDir}/generated"],
+    "plugins": [{ "name": "@css-modules-kit/ts-plugin" }]
   },
-  "include": ["src"]
+  "cmkOptions": { "enabled": true },
+  "include": ["src", "generated/src"]
 }

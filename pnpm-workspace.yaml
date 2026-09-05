@@ -12,6 +12,18 @@ catalog:
   '@types/react-dom': ^19.2.4
   '@vitejs/plugin-react': ^6.1.0
   vite: ^8.2.2
+  '@base-ui/react': ^1.7.0
+  '@radix-ui/colors': ^3.0.0
+  # styling: typed CSS modules + stylelint
+  '@css-modules-kit/codegen': ^1.4.0
+  '@css-modules-kit/ts-plugin': ^1.4.0
+  '@css-modules-kit/stylelint-plugin': ^1.4.0
+  stylelint: ^17.14.1
+  stylelint-config-standard: ^40.0.0
+  stylelint-config-css-modules: ^4.6.0
+  stylelint-config-recess-order: ^7.8.0
+  '@double-great/stylelint-a11y': ^3.5.2
+  stylelint-value-no-unknown-custom-properties: ^6.1.1
   # infra
   aws-cdk-lib: ^2.268.0
   aws-cdk: ^2.1140.0

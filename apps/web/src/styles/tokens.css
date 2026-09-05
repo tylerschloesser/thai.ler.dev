@@ -1,0 +1,87 @@
+/*
+ * Semantic tokens — the only layer components are allowed to reference.
+ *
+ * Everything is declared on :root; `.dark` carries overrides only, for the
+ * handful of values that genuinely differ by theme rather than following the
+ * palette. Colors resolve through the Radix step contract, so they need no
+ * dark-mode counterpart here.
+ */
+
+:root {
+  /* surfaces */
+  --color-bg: var(--mauve-1);
+  --color-bg-subtle: var(--mauve-2);
+  --color-surface: var(--mauve-3);
+  --color-surface-translucent: var(--mauve-a3);
+
+  /* borders */
+  --color-border-subtle: var(--mauve-6);
+  --color-border: var(--mauve-7);
+
+  /* text */
+  --color-text: var(--mauve-11);
+  --color-text-strong: var(--mauve-12);
+
+  /* accent */
+  --color-accent-surface: var(--purple-a3);
+  --color-accent-border: var(--purple-a8);
+  --color-accent-text: var(--purple-11);
+  --color-accent-solid: var(--purple-9);
+  --color-focus-ring: var(--purple-8);
+
+  /* elevation */
+  --shadow-color: var(--black-a4);
+  --shadow-color-ambient: var(--black-a3);
+  --shadow-2: 0 10px 15px -3px var(--shadow-color), 0 4px 6px -2px
+    var(--shadow-color-ambient);
+
+  /* space — 4px scale */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.25rem;
+  --space-6: 1.5rem;
+  --space-8: 2rem;
+  --space-11: 2.75rem;
+  --space-13: 3.25rem;
+
+  /* radius */
+  --radius-1: 0.25rem;
+  --radius-2: 0.375rem;
+  --radius-3: 0.5rem;
+
+  /* type */
+  --font-sans: system-ui, 'Segoe UI', roboto, sans-serif;
+  --font-mono: ui-monospace, consolas, monospace;
+  --text-1: 0.9375rem;
+  --text-2: 1rem;
+  --text-3: 1.125rem;
+  --text-4: 1.25rem;
+  --text-5: 1.5rem;
+  --text-7: 2.25rem;
+  --text-8: 3.5rem;
+  --leading-tight: 1.18;
+  --leading-normal: 1.45;
+  --weight-medium: 500;
+  --tracking-tight: -0.03em;
+  --tracking-normal: 0.01em;
+
+  /* motion */
+  --duration-2: 300ms;
+  --ease-out: cubic-bezier(0.2, 0, 0, 1);
+
+  /* layout */
+  --layout-max-width: 70.375rem;
+  --icon-size-1: 1.125rem;
+  --icon-size-2: 1.375rem;
+}
+
+/*
+ * Shadows are the one thing the palette can't carry: the same alpha reads as a
+ * soft lift on white and as nothing at all on a near-black surface.
+ */
+.dark {
+  --shadow-color: var(--black-a11);
+  --shadow-color-ambient: var(--black-a9);
+}

@@ -10,12 +10,20 @@
     "dev": "pnpm --filter web dev",
     "build": "pnpm -r run build",
     "typecheck": "pnpm -r run typecheck",
-    "lint": "oxlint",
+    "lint": "oxlint && stylelint \"apps/web/src/**/*.css\"",
+    "lint:fix": "oxlint --fix && stylelint --fix \"apps/web/src/**/*.css\"",
     "synth": "pnpm --filter cdk run synth",
     "deploy": "pnpm --filter cdk run deploy"
   },
   "devDependencies": {
+    "@css-modules-kit/stylelint-plugin": "catalog:",
+    "@double-great/stylelint-a11y": "catalog:",
     "oxlint": "catalog:",
+    "stylelint": "catalog:",
+    "stylelint-config-css-modules": "catalog:",
+    "stylelint-config-recess-order": "catalog:",
+    "stylelint-config-standard": "catalog:",
+    "stylelint-value-no-unknown-custom-properties": "catalog:",
     "typescript": "catalog:"
   }
 }
