@@ -25,7 +25,9 @@ Rules:
 - Do not add a dependency, a test framework, or a file the chunk did not call for. If a
   dependency is genuinely required, it goes in the `catalog:` block of
   `pnpm-workspace.yaml` and you say so in the report.
-- `pnpm dev` talks to production data. Do not start it unless the chunk asks you to.
+- `pnpm dev`, `pnpm test:e2e` and the default `verify-offline` walk all run against the local
+  in-process API and touch nothing in production. Only `pnpm dev:prod` (or `API_TARGET`
+  pointed at the deployed site) does — don't run that unless the chunk asks for it.
 
 Report, in this order: the files you changed with a one-line summary each; the result of
 lint and typecheck, and of the acceptance check if you ran it; anything you noticed but

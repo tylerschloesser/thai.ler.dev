@@ -22,8 +22,8 @@ rather than waiting for it to load.
 | `testing.md` | `e2e/**`, `apps/api/src/local.ts` and its fixtures/fake model/memory store | the Playwright e2e suite, the fake-model contract, selector gotchas |
 
 Skills: `file-issue` turns a side finding into a deduped GitHub issue; `/research-issue` turns
-a topic into an executable spec issue; `verify-offline` walks the five browser-only checks;
-`playwright-cli` drives the browser.
+a topic into an executable spec issue; `verify-offline` walks the five browser-only checks
+against the local API; `playwright-cli` drives the browser.
 
 ## Always true
 

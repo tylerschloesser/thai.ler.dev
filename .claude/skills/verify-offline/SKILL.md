@@ -10,23 +10,35 @@ Nothing here is covered by `pnpm lint && pnpm typecheck && pnpm build`. These fi
 the regression suite for `apps/web/src/db/` and the service worker, run by hand in a real
 browser through `playwright-cli`.
 
-**Every write below lands in production data.** The app has no local backend; `/api` is
-proxied to https://thai.ler.dev. Create exactly one throwaway translation and delete it at the
-end. Snapshots and screenshots go to `.playwright-cli/`, which is gitignored; don't commit any
+**Check 2 fails today**, on
+[#1](https://github.com/tylerschloesser/thai.ler.dev/issues/1). That is the app, not this
+walk — report the FAIL, and do not weaken the check to make it pass.
+
+Snapshots and screenshots go to `.playwright-cli/`, which is gitignored; don't commit any
 other capture.
 
 ## Setup
 
 The service worker is **not registered under `pnpm dev`** (`vite-plugin-pwa` has no
 `devOptions` in `apps/web/vite.config.ts`), so the cold-start check needs the production
-build served by `vite preview`. Its proxy inherits the dev proxy, so `/api` still reaches
-production. Run everything against preview so one browser session covers all five:
+build served by `vite preview`. Run everything against preview so one browser session covers
+all five:
 
 ```bash
+pnpm --filter api start        # the local API on :8787, keep it running
 pnpm build
 pnpm --filter web preview      # serves apps/web/dist at http://localhost:4173, keep it running
 playwright-cli -s=offline open http://localhost:4173
 ```
+
+That is a **local** backend — in-memory store, fake model, seeded demo rows — so nothing here
+touches production. To walk the same checks against the deployed API instead, start the
+preview with `API_TARGET=https://thai.ler.dev`; then every write below lands in production
+data, so create exactly one throwaway translation and delete it at the end.
+
+`pnpm test:e2e` (`.claude/rules/testing.md`) automates checks 1, 3, 4 and 5 against the same
+local backend. This walk still earns its keep: Playwright's `setOffline` is not a real
+network drop.
 
 Toggling the network is a Playwright context call, not a CLI flag:
 
@@ -135,8 +147,10 @@ leadership.
 ### 5. Failed-row retry
 
 This needs a row already in `failed` state; the client has no switch to force one, because a
-failure is recorded by the worker. Look for a `Failed` pill in the list. If there is none,
-report this check as **SKIPPED**, not passed.
+failure is recorded by the worker. Against the local API the fake model fails any row whose
+text contains `FAIL` (once per row id per process), so type `FAIL something` to produce one
+on demand. Look for a `Failed` pill in the list. If there is none, report this check as
+**SKIPPED**, not passed.
 
 ```bash
 playwright-cli -s=offline snapshot                 # click the card whose pill reads Failed
