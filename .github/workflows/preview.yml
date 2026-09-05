@@ -1,0 +1,206 @@
+# Per-PR preview stacks. Exactly one of the `preview:frontend` /
+# `preview:full-stack` labels on a pull request deploys
+# ThaiLerDevPreview<n>Stack at https://pr-<n>.thai.ler.dev; removing it, or
+# closing the PR, tears the stack down.
+#
+# `frontend` points `/api/*` at the production API, so it reads and writes
+# production data. `full-stack` gets its own table, request Lambda and worker,
+# seeded with the demo fixtures.
+#
+# Keep the toolchain steps in sync with ci.yml, deploy.yml and claude.yml.
+# Unlike deploy.yml this workflow does NOT gate on lint/typecheck/build/e2e —
+# ci.yml already runs those on the same PR, and a preview exists to be looked
+# at while the code is still red.
+
+name: Preview
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, labeled, unlabeled, closed]
+
+permissions:
+  id-token: write
+  contents: read
+  pull-requests: write
+
+# Never cancel in flight: a run killed mid-CloudFormation leaves the stack
+# wedged in *_IN_PROGRESS and a human has to dig it out.
+concurrency:
+  group: preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: false
+
+env:
+  PR: ${{ github.event.pull_request.number }}
+  STACK: ThaiLerDevPreview${{ github.event.pull_request.number }}Stack
+  HOST: pr-${{ github.event.pull_request.number }}.thai.ler.dev
+  GH_TOKEN: ${{ github.token }}
+  GH_REPO: ${{ github.repository }}
+
+jobs:
+  # Both label conditions read `pull_request.labels`, never `github.event.label`:
+  # on an `unlabeled` event `pull_request.labels` already excludes the label
+  # that was just removed, which is exactly the state `destroy` wants to see.
+  #
+  # Every AWS job also requires the head repo to be this repo. A fork PR gets no
+  # OIDC token, so the job would fail at configure-aws-credentials instead of
+  # skipping cleanly.
+  deploy:
+    if: >-
+      github.event.action != 'closed'
+      && github.event.pull_request.head.repo.full_name == github.repository
+      && (contains(github.event.pull_request.labels.*.name, 'preview:frontend')
+          != contains(github.event.pull_request.labels.*.name, 'preview:full-stack'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: pnpm/action-setup@v6
+
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      # `addSite` reads apps/web/dist and throws if it is missing, so this has
+      # to come before any synth or deploy.
+      - run: pnpm build
+
+      - id: mode
+        env:
+          FRONTEND: ${{ contains(github.event.pull_request.labels.*.name, 'preview:frontend') }}
+        run: |
+          if [ "$FRONTEND" = 'true' ]; then
+            echo 'mode=frontend' >> "$GITHUB_OUTPUT"
+          else
+            echo 'mode=full-stack' >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-actions-preview
+
+      # Three things here are load-bearing:
+      #
+      # `--exclusively` is not cosmetic. This role can assume the CDK bootstrap
+      # roles, so a run that pulled in a dependency stack could deploy
+      # unreviewed PR code to production.
+      #
+      # `--outputs-file` must be absolute. `pnpm --filter cdk exec` runs in
+      # infra/cdk/, so a relative path writes infra/cdk/outputs.json while the
+      # seed step below, which runs at the repo root, finds nothing.
+      #
+      # `-c modelProvider=fake` keeps a full-stack preview off the real
+      # Anthropic API, whose key currently has no credit — every translation
+      # would land `Failed` in about two seconds. The fake model is
+      # deterministic, which is also what the e2e suite runs against. It is
+      # ignored in frontend mode, which deploys no worker at all.
+      - name: cdk deploy
+        env:
+          MODE: ${{ steps.mode.outputs.mode }}
+        run: |
+          pnpm --filter cdk exec cdk deploy "$STACK" \
+            --exclusively \
+            --require-approval never \
+            -c pr="$PR" \
+            -c preview="$MODE" \
+            -c modelProvider=fake \
+            --outputs-file "$GITHUB_WORKSPACE/preview-outputs.json"
+
+      # After configure-aws-credentials and inheriting its AWS_REGION:
+      # `pnpm --filter api seed` runs seed-table.ts, which talks to DynamoDB
+      # directly rather than through CDK.
+      - name: Seed the preview table
+        if: steps.mode.outputs.mode == 'full-stack'
+        run: |
+          TABLE_NAME=$(jq -er --arg s "$STACK" '.[$s].TableName' "$GITHUB_WORKSPACE/preview-outputs.json")
+          echo "seeding $TABLE_NAME"
+          TABLE_NAME="$TABLE_NAME" pnpm --filter api seed
+
+      - name: Comment
+        env:
+          MODE: ${{ steps.mode.outputs.mode }}
+          SHA: ${{ github.event.pull_request.head.sha }}
+        run: |
+          {
+            echo "### Preview · \`$MODE\`"
+            echo
+            echo "https://$HOST"
+            echo
+            if [ "$MODE" = 'frontend' ]; then
+              echo "\`/api/*\` points at the **production** API, so this preview reads and **writes production data**."
+            else
+              echo "Its own table, request Lambda and worker, seeded with the demo fixtures. The worker runs the **fake model** (\`MODEL_PROVIDER=fake\`), so translations are deterministic \`[fake]\` output and never reach Anthropic."
+            fi
+            echo
+            echo "The first deploy creates a CloudFront distribution, which takes 5–10 minutes, and DNS/TLS can lag a little behind that — an error immediately after this comment appears is normal."
+            echo
+            echo "Remove the label or close the PR to tear it down. Deletion takes another 5–15 minutes, so re-labelling inside that window fails on \`DELETE_IN_PROGRESS\`."
+            echo
+            echo "<sub>\`$STACK\` · $SHA</sub>"
+          } > "$RUNNER_TEMP/comment.md"
+          gh pr comment "$PR" --edit-last --create-if-none --body-file "$RUNNER_TEMP/comment.md"
+
+  # A PR gets one preview stack, so two labels is a mistake rather than a
+  # choice between them. Say so and fail, instead of picking one silently.
+  conflict:
+    if: >-
+      github.event.action != 'closed'
+      && contains(github.event.pull_request.labels.*.name, 'preview:frontend')
+      && contains(github.event.pull_request.labels.*.name, 'preview:full-stack')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Comment and fail
+        run: |
+          {
+            echo "### Preview · conflict"
+            echo
+            echo "Both \`preview:frontend\` and \`preview:full-stack\` are set. A PR gets one preview stack — remove one of the two labels."
+          } > "$RUNNER_TEMP/comment.md"
+          gh pr comment "$PR" --edit-last --create-if-none --body-file "$RUNNER_TEMP/comment.md"
+          exit 1
+
+  destroy:
+    if: >-
+      github.event.pull_request.head.repo.full_name == github.repository
+      && (github.event.action == 'closed'
+          || (github.event.action == 'unlabeled'
+              && !contains(github.event.pull_request.labels.*.name, 'preview:frontend')
+              && !contains(github.event.pull_request.labels.*.name, 'preview:full-stack')))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: aws-actions/configure-aws-credentials@v6
+        with:
+          role-to-assume: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          aws-region: us-east-1
+          role-session-name: github-actions-preview-destroy
+
+      # Most closed PRs never had a preview. Look before commenting, so a
+      # no-op run does not claim it destroyed something.
+      - id: stack
+        run: |
+          if aws cloudformation describe-stacks --stack-name "$STACK" >/dev/null 2>&1; then
+            echo 'exists=true' >> "$GITHUB_OUTPUT"
+          else
+            echo 'exists=false' >> "$GITHUB_OUTPUT"
+          fi
+
+      # `delete-stack`, never `cdk destroy`: a teardown must not have to check
+      # out the PR and build the web app just to tell CDK what to delete.
+      # No `wait` either — CloudFront deletion takes 5–15 minutes and there is
+      # nothing to do with the result.
+      - if: steps.stack.outputs.exists == 'true'
+        run: aws cloudformation delete-stack --stack-name "$STACK"
+
+      - if: steps.stack.outputs.exists == 'true'
+        name: Comment
+        run: |
+          {
+            echo "### Preview · destroyed"
+            echo
+            echo "\`$STACK\` is deleting. CloudFront takes 5–15 minutes to release the distribution, so re-labelling before that finishes fails on \`DELETE_IN_PROGRESS\`."
+          } > "$RUNNER_TEMP/comment.md"
+          gh pr comment "$PR" --edit-last --create-if-none --body-file "$RUNNER_TEMP/comment.md"

@@ -13,7 +13,7 @@ const shared = new SharedStack(app, 'ThaiLerDevSharedStack', { env })
 const site = new SiteStack(app, 'ThaiLerDevSiteStack', { env })
 site.addStackDependency(shared)
 
-// A bare `cdk synth`/`cdk deploy` must see only the four stacks above — a
+// A bare `cdk synth`/`cdk deploy` must see only the three stacks above — a
 // preview stack only comes into being when `-c pr=<n>` is passed:
 //   cdk deploy ThaiLerDevPreview<n>Stack -c pr=<n> -c preview=frontend|full-stack
 const prContext = app.node.tryGetContext('pr')
