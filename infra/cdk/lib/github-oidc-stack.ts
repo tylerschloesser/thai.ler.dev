@@ -22,9 +22,13 @@ export class GithubOidcStack extends Stack {
             'token.actions.githubusercontent.com:aud': 'sts.amazonaws.com',
           },
           StringLike: {
+            // The `:pull_request` subs are what let the per-PR preview workflow
+            // deploy and destroy its own stack.
             'token.actions.githubusercontent.com:sub': [
               'repo:tylerschloesser@2300885/thai.ler.dev@1357787239:ref:refs/heads/main',
               'repo:tylerschloesser/thai.ler.dev:ref:refs/heads/main',
+              'repo:tylerschloesser@2300885/thai.ler.dev@1357787239:pull_request',
+              'repo:tylerschloesser/thai.ler.dev:pull_request',
             ],
           },
         },
@@ -36,6 +40,24 @@ export class GithubOidcStack extends Stack {
         actions: ['sts:AssumeRole'],
         resources: [
           'arn:aws:iam::063257577013:role/cdk-hnb659fds-*-063257577013-us-east-1',
+        ],
+      }),
+    )
+
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['cloudformation:DeleteStack', 'cloudformation:DescribeStacks'],
+        resources: [
+          'arn:aws:cloudformation:us-east-1:063257577013:stack/ThaiLerDevPreview*/*',
+        ],
+      }),
+    )
+
+    role.addToPolicy(
+      new iam.PolicyStatement({
+        actions: ['dynamodb:PutItem', 'dynamodb:BatchWriteItem'],
+        resources: [
+          'arn:aws:dynamodb:us-east-1:063257577013:table/ThaiLerDevPreview*',
         ],
       }),
     )

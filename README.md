@@ -12,6 +12,7 @@ thai.ler.dev/
 ├── packages/schema/      # @thai/schema — zod schemas shared by the client, the API, and the model
 ├── apps/web/             # @thai/web — Vite + React app, builds to apps/web/dist
 ├── apps/api/             # @thai/api — Hono lambdalith + async worker
+├── e2e/                  # @thai/e2e — Playwright suite, run against a built app + the local API
 └── infra/cdk/            # @thai/cdk — AWS CDK (TypeScript), run via tsx
 ```
 
@@ -83,8 +84,9 @@ preflight.
 | `typecheck` | Type-check all packages                           |
 | `lint`      | Lint the repo with oxlint and stylelint           |
 | `lint:fix`  | Apply the autofixable lint fixes                  |
+| `test:e2e`  | Playwright, against a built app and the local API |
 | `synth`     | Synthesize the CDK app                            |
-| `deploy`    | Deploy the CDK app — prefer naming the stack (below) |
+| `deploy`    | Deploy the CDK app — prefer naming the stacks (below) |
 
 ## Frontend
 
@@ -109,16 +111,36 @@ Shared dependency versions live in the `catalog:` block of `pnpm-workspace.yaml`
 
 ## Infrastructure
 
-`ThaiLerDevSiteStack` (AWS CDK, `us-east-1`) provisions:
+Everything is AWS CDK in `us-east-1` (CloudFront requires its certificate there). There are
+three permanent stacks, and a fourth that only exists while a pull request asks for it:
+
+| Stack | What it holds |
+| --- | --- |
+| `ThaiLerDevSharedStack` | One ACM certificate covering `thai.ler.dev` **and** `*.thai.ler.dev`, exported for the other stacks to import |
+| `ThaiLerDevSiteStack` | The production site and the API |
+| `ThaiLerDevGithubOidcStack` | The GitHub OIDC provider and the `thai-ler-dev-github-deploy` role CI assumes |
+| `ThaiLerDevPreview<n>Stack` | A per-PR preview at `pr-<n>.thai.ler.dev`. Only synthesized when `-c pr=<n> -c preview=frontend\|full-stack` is passed |
+
+A `frontend` preview deploys only a bucket and a distribution, and points `/api/*` at the
+**production** API through the function-URL ARN `ThaiLerDevSiteStack` exports — so it reads
+and writes production data. A `full-stack` preview gets its own table and Lambdas instead.
+
+Cross-stack values move through explicit CloudFormation exports rather than CDK's automatic
+ones, because `cdk.json` sets `@aws-cdk/core:defaultCrossStackReferences` to `"weak"`.
+
+`ThaiLerDevSiteStack` provisions:
 
 - A private S3 bucket for the built site
 - CloudFront in front of it, reached only via Origin Access Control
-- An ACM certificate in `us-east-1` for the CloudFront distribution
 - Route53 alias records pointing `thai.ler.dev` at CloudFront
 - A cache-control split: hashed assets are cached immutably for a year; HTML is served `no-cache` and CloudFront is invalidated on every deploy
 - A CloudFront Function on the default behavior that rewrites extensionless paths to
   `/index.html` for client-side routing
 - The API (`lib/api.ts`): one DynamoDB table, the request-path Lambda, and the worker
+
+The bucket, distribution, cache-control split, SPA function and DNS records are built by
+`addSite` (`lib/site.ts`), which `ThaiLerDevPreview<n>Stack` calls too — that is what makes a
+preview identical to production apart from its domain and its API.
 
 Cost at idle is zero: there is no API Gateway (the request Lambda is reached through a
 function URL behind CloudFront), DynamoDB is on-demand, and nothing else runs.
@@ -132,26 +154,32 @@ Two details that are easy to get wrong and are deliberate:
   access control signs each origin request with SigV4 and writes its own `Authorization`,
   so a viewer-supplied one collides with it. Auth tokens travel in `x-id-token`.
 
-`ThaiLerDevGithubOidcStack` sets up a GitHub OIDC provider and the `thai-ler-dev-github-deploy` IAM role that CI assumes.
-
 ## Deploying
 
-CI deploys `ThaiLerDevSiteStack` automatically on every push to `main` (see `.github/workflows/deploy.yml`).
+CI runs lint, typecheck, build and the Playwright suite on every pull request
+(`.github/workflows/ci.yml`), and on a push to `main` runs the same sequence before deploying
+`ThaiLerDevSharedStack` and `ThaiLerDevSiteStack` (`.github/workflows/deploy.yml`). The e2e
+step sits before the AWS credentials step on purpose: a red suite stops the run before it can
+reach the account.
 
 To deploy manually:
 
 ```
 aws sso login --profile admin
 pnpm build
-AWS_PROFILE=admin pnpm --filter cdk exec cdk deploy ThaiLerDevSiteStack
+AWS_PROFILE=admin pnpm --filter cdk exec cdk deploy ThaiLerDevSharedStack ThaiLerDevSiteStack
 ```
+
+`pnpm build` first, always: the CDK app reads `apps/web/dist` and throws if it is missing.
 
 ## One-time setup
 
 Already done:
 
 - CDK bootstrap in `us-east-1`
-- `AWS_PROFILE=admin pnpm --filter cdk exec cdk deploy ThaiLerDevGithubOidcStack`
+- `AWS_PROFILE=admin pnpm --filter cdk exec cdk deploy ThaiLerDevGithubOidcStack` — deployed
+  by hand, never from CI, because it is what grants CI its own trust. Redeploy it by hand
+  whenever its trust policy or permissions change.
 - `gh variable set AWS_DEPLOY_ROLE_ARN --body arn:aws:iam::063257577013:role/thai-ler-dev-github-deploy`
 - The Anthropic API key in the Secrets Manager secret `thai-ler-dev/anthropic`, read at cold
   start and deliberately never in CDK source or a Lambda environment variable.
