@@ -40,6 +40,7 @@ catalog:
   '@double-great/stylelint-a11y': ^3.5.2
   stylelint-value-no-unknown-custom-properties: ^6.1.1
   # api
+  '@hono/node-server': ^2.1.1
   hono: ^4.13.7
   '@anthropic-ai/sdk': ^0.124.0
   '@aws-sdk/client-dynamodb': ^3.1127.0

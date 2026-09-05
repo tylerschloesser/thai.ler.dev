@@ -24,6 +24,9 @@ Loaded when you touch a `tsconfig*.json`, a `package.json`, or `pnpm-workspace.y
   nothing needs. `apps/api/tsconfig.json` carries a comment saying so.
 - `pnpm typecheck` runs repo-wide. `pnpm lint` is `oxlint && stylelint "apps/web/src/**/*.css"`
   — oxlint covers the repo, stylelint only `apps/web`. Both scripts live at the **root**;
-  individual packages have no `lint` script.
+  individual packages have no `lint` script. The exception is `apps/api`, the one package also
+  run directly rather than only built: its `dev`/`start`/`seed` scripts run `tsx` against
+  `src/local.ts` / `src/seed-table.ts`, and the root `dev` runs `dev` there in parallel with
+  the web app's.
 - `esbuild` is a **root** devDependency on purpose; the root `package.json` `"//"` key says
   why, and `.claude/rules/cdk.md` has the consequence.

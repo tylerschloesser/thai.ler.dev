@@ -1,4 +1,5 @@
 import { handle } from 'hono/aws-lambda'
-import { app } from './app.ts'
+import { createApp } from './app.ts'
+import { createLambdaDispatcher } from './dispatch.ts'
 
-export const handler = handle(app)
+export const handler = handle(createApp({ dispatcher: createLambdaDispatcher() }))

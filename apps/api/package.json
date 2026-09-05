@@ -5,7 +5,10 @@
   "type": "module",
   "scripts": {
     "build": "tsc -b",
-    "typecheck": "tsc -b"
+    "typecheck": "tsc -b",
+    "dev": "tsx watch src/local.ts",
+    "start": "tsx src/local.ts",
+    "seed": "tsx src/seed-table.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "catalog:",
@@ -18,8 +21,10 @@
     "zod": "catalog:"
   },
   "devDependencies": {
+    "@hono/node-server": "catalog:",
     "@types/aws-lambda": "catalog:",
     "@types/node": "catalog:",
+    "tsx": "catalog:",
     "typescript": "catalog:"
   }
 }
