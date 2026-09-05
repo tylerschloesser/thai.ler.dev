@@ -93,7 +93,7 @@ Two things are enforced rather than documented: CSS Module class names are type-
 (`@css-modules-kit` generates `.d.ts` during `typecheck`/`build`, so `styles.typo` fails to
 compile), and stylelint rejects raw hex/rgb/hsl on colour properties and raw px on spacing and
 radius properties in any `*.module.css`. Hairline `border` widths stay literal px. See
-`CLAUDE.md` for the full conventions.
+`CLAUDE.md` and the rule files in `.claude/rules/` for the full conventions.
 
 ## Dependency versions
 
