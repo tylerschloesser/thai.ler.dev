@@ -20,7 +20,9 @@ rather than waiting for it to load.
 | `api.md` | `apps/api/**`, `infra/cdk/lib/api.ts` | auth seam, key shapes, idempotency, worker timeouts, sync |
 | `cdk.md` | `infra/cdk/**`, `.github/workflows/**` | stacks, the CloudFront gotchas, AWS access, secrets |
 
-Skills: `verify-offline` walks the five browser-only checks; `playwright-cli` drives the browser.
+Skills: `file-issue` turns a side finding into a deduped GitHub issue; `/research-issue` turns
+a topic into an executable spec issue; `verify-offline` walks the five browser-only checks;
+`playwright-cli` drives the browser.
 
 ## Always true
 
@@ -54,6 +56,13 @@ cheaper model verifies, so the expensive model spends its context on judgment, n
   invariant named in a rule file, and the review of the integrated diff.
 - Don't delegate a chunk smaller than its handoff (a one-line edit), or one that only makes
   sense with the whole conversation in view.
+- A problem you notice that the task doesn't cover is neither fixed nor dropped: run
+  `file-issue` (it dedupes, then files with the `claude` label), put the URL in your report,
+  carry on.
+- Work moves between local sessions and GitHub issues. An issue is picked up either by a
+  claude.ai/code session or by an `@claude` comment (the GitHub Action in
+  `.github/workflows/claude.yml`), so it must stand alone: symptom, where, acceptance check,
+  out of scope. **Never write `@claude` into an issue body**; that starts a run.
 
 ## Keeping this context current
 

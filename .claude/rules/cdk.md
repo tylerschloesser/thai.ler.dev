@@ -65,3 +65,12 @@ app has two.
 
 The Anthropic API key lives in the Secrets Manager secret `thai-ler-dev/anthropic`, created
 out of band and imported by name — never in CDK source or a Lambda environment variable.
+
+`.github/workflows/claude.yml` is the Claude Code GitHub Action, unrelated to deploys. It runs
+in interactive mode on `@claude` mentions and authenticates with the `CLAUDE_CODE_OAUTH_TOKEN`
+repository secret: a subscription token from `claude setup-token`, chosen over an API key
+because the account's API key carries no credit. The Claude GitHub App must be installed on
+the repo for it to comment or open PRs. It installs pnpm and dependencies before the Claude
+step so `pnpm lint`, `typecheck` and `build` work in the run; keep those steps in sync with
+`deploy.yml`. Because it also triggers on `issues: opened`, an issue whose body contains
+`@claude` starts a run when created, which is why the issue-filing skills forbid the phrase.
