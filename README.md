@@ -196,6 +196,15 @@ Already done:
   by hand, never from CI, because it is what grants CI its own trust. Redeploy it by hand
   whenever its trust policy or permissions change.
 - `gh variable set AWS_DEPLOY_ROLE_ARN --body arn:aws:iam::063257577013:role/thai-ler-dev-github-deploy`
+- The two preview labels. A label is repo state, not code, so nothing in the tree recreates
+  them — `preview.yml` only reacts to them:
+
+  ```
+  gh label create preview:frontend --color 0E8A16 \
+    --description "Deploy pr-<n>.thai.ler.dev against the production API"
+  gh label create preview:full-stack --color 1D76DB \
+    --description "Deploy pr-<n>.thai.ler.dev with its own API, table and seed"
+  ```
 - The Anthropic API key in the Secrets Manager secret `thai-ler-dev/anthropic`, read at cold
   start and deliberately never in CDK source or a Lambda environment variable.
 

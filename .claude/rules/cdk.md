@@ -70,10 +70,8 @@ Loaded when you touch `infra/cdk/` or the GitHub workflows that deploy it.
    which include the `Authorization` header OAC just added — denying `authorization` strips
    CloudFront's own signature. This is why viewer auth tokens travel in `x-id-token`.
 
-Related: SPA fallback is a CloudFront **Function** on the default behavior, not
-distribution-wide `errorResponses`. Custom error responses apply to every behavior, so a 403
-or 404 from `/api/*` would come back as the HTML shell with status 200. The function only
-rewrites URIs containing no `.`, so a genuinely missing asset still 404s.
+Related, and argued in full at the `SpaFallback` construct in `lib/site.ts`: the SPA fallback
+is a CloudFront **Function** on the default behavior, never distribution-wide `errorResponses`.
 
 ## AWS access
 
@@ -135,3 +133,7 @@ the run rather than picking one.
   the stack rather than being passed one.
 - One sticky `gh pr comment --edit-last --create-if-none` per PR. It is the only place a human
   is told that a frontend preview reads and writes **production data**.
+- A `pull_request` workflow can only be tested by a PR whose **merge ref already contains
+  it**, so a change here is proven by opening a throwaway PR off the branch carrying the
+  change and basing it on that branch — never on `main`. Closing the throwaway afterwards
+  exercises the destroy path for free. That is how both preview modes were first deployed.
