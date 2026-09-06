@@ -116,7 +116,7 @@ the run rather than picking one.
 - Every AWS job requires `pull_request.head.repo.full_name == github.repository`: a fork gets
   no OIDC token, so without it the job would fail at `configure-aws-credentials` rather than
   skip cleanly.
-- All three deploy flags are load-bearing. `--exclusively`, because this role can assume the
+- Three of the deploy flags are load-bearing. `--exclusively`, because this role can assume the
   CDK bootstrap roles, so a run that pulled in a dependency stack could deploy unreviewed PR
   code to production. `--outputs-file "$GITHUB_WORKSPACE/preview-outputs.json"` must be
   **absolute**, because `pnpm --filter cdk exec` runs in `infra/cdk/` while the seed step that
