@@ -17,9 +17,8 @@ Loaded when you touch `infra/cdk/` or the GitHub workflows that deploy it.
   API and the production site) and `ThaiLerDevGithubOidcStack`. `ThaiLerDevPreview<n>Stack`
   is added by `bin/app.ts` only when `-c pr=<n>` is passed, with `-c preview=frontend` or
   `-c preview=full-stack`; a bare `cdk list` must keep showing exactly the three.
-  **No preview stack has ever been deployed** — both modes are `cdk synth`-verified only.
-  Treat the first real `cdk deploy ThaiLerDevPreview<n>Stack` as unproven, not as a regression
-  if it surprises you. Delete this sentence when it lands.
+  Both preview modes have now been deployed and deleted for real, so treat a failure there as
+  a regression rather than as untested ground.
 - Cross-stack values travel through **explicit** `CfnOutput { exportName }` and
   `Fn.importValue`, not CDK's automatic references, because `cdk.json` sets
   `@aws-cdk/core:defaultCrossStackReferences: "weak"`. The three names are in `lib/dns.ts`
@@ -131,6 +130,8 @@ the run rather than picking one.
   mid-CloudFormation leaves the stack `*_IN_PROGRESS` for a human to dig out.
 - `destroy` runs `describe-stacks` first, so a closed PR that never had a preview does not
   claim it destroyed one, then `delete-stack` without `--wait`. CloudFront deletion takes
-  5-15 minutes, so re-labelling inside that window fails on `DELETE_IN_PROGRESS`.
+  5-15 minutes, so re-labelling inside that window fails on `DELETE_IN_PROGRESS`. The role
+  needs no `iam:PassRole`: CloudFormation reuses the `cdk-hnb659fds-cfn-exec-role` stored on
+  the stack rather than being passed one.
 - One sticky `gh pr comment --edit-last --create-if-none` per PR. It is the only place a human
   is told that a frontend preview reads and writes **production data**.
