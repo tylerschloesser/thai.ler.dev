@@ -94,10 +94,11 @@ jobs:
       # seed step below, which runs at the repo root, finds nothing.
       #
       # `-c modelProvider=fake` keeps a full-stack preview off the real
-      # Anthropic API, whose key currently has no credit — every translation
-      # would land `Failed` in about two seconds. The fake model is
-      # deterministic, which is also what the e2e suite runs against. It is
-      # ignored in frontend mode, which deploys no worker at all.
+      # Anthropic API: it spends no tokens and shows a reviewer the same
+      # deterministic output on every push, which is also what the e2e suite
+      # asserts against. The trade is that a prompt or schema change cannot be
+      # reviewed in a preview at all — issue #7. Ignored in frontend mode,
+      # which deploys no worker.
       - name: cdk deploy
         env:
           MODE: ${{ steps.mode.outputs.mode }}

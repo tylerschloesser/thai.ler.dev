@@ -118,9 +118,10 @@ the run rather than picking one.
   CDK bootstrap roles, so a run that pulled in a dependency stack could deploy unreviewed PR
   code to production. `--outputs-file "$GITHUB_WORKSPACE/preview-outputs.json"` must be
   **absolute**, because `pnpm --filter cdk exec` runs in `infra/cdk/` while the seed step that
-  reads it runs at the repo root. `-c modelProvider=fake`, because the Anthropic key has no
-  credit and a full-stack preview on the real model would land every translation `Failed`;
-  the cost is that a preview never exercises the Anthropic path.
+  reads it runs at the repo root. `-c modelProvider=fake`, so a preview spends no Anthropic
+  tokens and shows a reviewer the same deterministic output on every push. The trade is that
+  a preview never exercises the Anthropic path at all, which makes a prompt or
+  `BreakdownSchema` change unreviewable in one; issue #7 tracks opting in per PR.
 - The seed step runs **after** `configure-aws-credentials` and inherits its `AWS_REGION`:
   `pnpm --filter api seed` talks to DynamoDB directly, not through CDK, and the OIDC role's
   `dynamodb:PutItem` on `ThaiLerDevPreview*` is what lets it.
