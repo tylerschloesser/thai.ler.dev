@@ -504,7 +504,7 @@ proves create → list → soft delete → export → import-merge round trip.
 Acceptance: unit tests green; fixture committed; a Node smoke run of
 `pipeline` against the mock completes with `status: 'complete'`.
 
-### M4 — Pages and flows `[ ]`  (serial after M1–M3; can split Home/Library vs DialogueView vs Settings across agents once the shared hooks land)
+### M4 — Pages and flows `[x]`  (serial after M1–M3; can split Home/Library vs DialogueView vs Settings across agents once the shared hooks land)
 
 1. `useAnnotate` (TanStack `useMutation` around `pipeline`, progress state,
    cancel, retry-failed, resume-on-open when a `partial` record exists).
@@ -519,7 +519,7 @@ Acceptance: all specs green locally and on Vercel; manual walk with a real
 key on the preview URL (Tyler or executor via `playwright-cli` with the
 mock disabled) annotates a real dialogue end-to-end.
 
-### M5 — Hardening and handoff `[ ]`
+### M5 — Hardening and handoff `[~]`
 
 1. Accessibility pass (labels, focus rings, `aria-live` on progress).
 2. Performance: library list stays cheap with 100 dialogues (annotations in

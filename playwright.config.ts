@@ -40,7 +40,12 @@ export default defineConfig({
   fullyParallel: true,
   retries: remote ? 1 : 0,
   reporter: 'list',
-  timeout: 15_000,
+  // Against a Vercel preview every action crosses the network and 7 workers
+  // share one cold serverless edge, so UI transitions (Base UI's Select
+  // popup in particular) legitimately take longer than they do locally.
+  // Give remote runs more headroom rather than weakening the assertions.
+  timeout: remote ? 30_000 : 15_000,
+  expect: { timeout: remote ? 15_000 : 5_000 },
   use: {
     baseURL,
     trace: 'on-first-retry',
