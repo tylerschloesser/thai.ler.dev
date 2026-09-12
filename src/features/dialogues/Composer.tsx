@@ -1,5 +1,5 @@
 import { useNavigate } from '@tanstack/react-router'
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { createDialogue } from '../../db/repo'
 import { splitDialogue } from '../../llm/split'
 import { startAnnotation } from '../annotate/useAnnotate'
@@ -16,6 +16,7 @@ import styles from './Composer.module.css'
 export function Composer() {
   const navigate = useNavigate()
   const { add: addToast } = useToast()
+  const sourceTextId = useId()
   const [sourceText, setSourceText] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -56,8 +57,9 @@ export function Composer() {
   return (
     <section className={styles.root} aria-label="Compose a dialogue">
       <Field.Root>
-        <Field.Label>Paste a Thai dialogue</Field.Label>
+        <Field.Label htmlFor={sourceTextId}>Paste a Thai dialogue</Field.Label>
         <Textarea
+          id={sourceTextId}
           rows={8}
           value={sourceText}
           onChange={(event) => setSourceText(event.target.value)}

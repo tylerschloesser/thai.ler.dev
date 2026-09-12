@@ -1,6 +1,6 @@
 import { Link, useNavigate } from '@tanstack/react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useId, useRef, useState } from 'react'
 import type { AnnotationRecord, Dialogue } from '../../db/db'
 import {
   getAnnotation,
@@ -120,6 +120,7 @@ export function DialogueView({ dialogueId }: DialogueViewProps) {
   const navigate = useNavigate()
   const { add: addToast } = useToast()
 
+  const renameFieldId = useId()
   const [renameOpen, setRenameOpen] = useState(false)
   const [title, setTitle] = useState('')
 
@@ -209,7 +210,9 @@ export function DialogueView({ dialogueId }: DialogueViewProps) {
   return (
     <div className={styles.root}>
       <div className={styles.titleRow}>
-        <h1 className={styles.title}>{dialogue.title}</h1>
+        <h1 className={styles.title} lang="th">
+          {dialogue.title}
+        </h1>
         <Dialog.Root
           open={renameOpen}
           onOpenChange={(open) => {
@@ -223,11 +226,13 @@ export function DialogueView({ dialogueId }: DialogueViewProps) {
           <Dialog.Popup>
             <Dialog.Title>Rename dialogue</Dialog.Title>
             <Field.Root>
-              <Field.Label>Title</Field.Label>
+              <Field.Label htmlFor={renameFieldId}>Title</Field.Label>
               <Textarea
+                id={renameFieldId}
                 rows={1}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
+                lang="th"
               />
             </Field.Root>
             <div className={styles.dialogActions}>

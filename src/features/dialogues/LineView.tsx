@@ -35,7 +35,11 @@ export function LineView({
   return (
     <li className={styles.line} data-status={status}>
       <div className={styles.speakerRow}>
-        {speaker && <span className={styles.speaker}>{speaker}</span>}
+        {speaker && (
+          <span className={styles.speaker} lang="th">
+            {speaker}
+          </span>
+        )}
         {status === 'pending' && <Spinner size="sm" label="Annotating line" />}
         {status === 'error' && (
           <span className={styles.statusBadge}>Failed</span>

@@ -81,6 +81,19 @@ export async function getAnnotation(
 }
 
 /**
+ * Batched lookup for rendering a library-list status chip per row: one
+ * `bulkGet` instead of one `getAnnotation` (and one live-query subscription)
+ * per dialogue. Order-aligned with `ids`; a missing/deleted annotation is
+ * `undefined` at that index.
+ */
+export async function getAnnotationsByIds(
+  ids: string[],
+): Promise<Array<AnnotationRecord | undefined>> {
+  if (ids.length === 0) return []
+  return db.annotations.bulkGet(ids)
+}
+
+/**
  * Creates a new (`status: 'partial'`) annotation record with `lineCount`
  * empty slots, ready for `upsertAnnotationLine` to fill in as the M3
  * pipeline's per-line calls land. Not itself listed in PLAN.MD §4.1's repo

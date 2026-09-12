@@ -1,9 +1,9 @@
 import { Link } from '@tanstack/react-router'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { useState } from 'react'
-import type { Dialogue } from '../../db/db'
+import { useId, useState } from 'react'
+import type { AnnotationRecord, Dialogue } from '../../db/db'
 import {
-  getAnnotation,
+  getAnnotationsByIds,
   listDialogues,
   renameDialogue,
   softDeleteDialogue,
@@ -50,16 +50,16 @@ function chipStatus(annotation: {
   return allFailed ? 'failed' : 'partial'
 }
 
-function DialogueRow({ dialogue }: { dialogue: Dialogue }) {
-  const annotation = useLiveQuery(
-    () =>
-      dialogue.currentAnnotationId
-        ? getAnnotation(dialogue.currentAnnotationId)
-        : undefined,
-    [dialogue.currentAnnotationId],
-  )
+function DialogueRow({
+  dialogue,
+  annotation,
+}: {
+  dialogue: Dialogue
+  annotation: AnnotationRecord | undefined
+}) {
   const status: ChipStatus = annotation ? chipStatus(annotation) : 'partial'
 
+  const renameFieldId = useId()
   const [renameOpen, setRenameOpen] = useState(false)
   const [title, setTitle] = useState(dialogue.title)
 
@@ -82,6 +82,7 @@ function DialogueRow({ dialogue }: { dialogue: Dialogue }) {
           to="/d/$id"
           params={{ id: dialogue.id }}
           className={styles.titleLink}
+          lang="th"
         >
           {dialogue.title}
         </Link>
@@ -104,11 +105,13 @@ function DialogueRow({ dialogue }: { dialogue: Dialogue }) {
           <Dialog.Popup>
             <Dialog.Title>Rename dialogue</Dialog.Title>
             <Field.Root>
-              <Field.Label>Title</Field.Label>
+              <Field.Label htmlFor={renameFieldId}>Title</Field.Label>
               <Textarea
+                id={renameFieldId}
                 rows={1}
                 value={title}
                 onChange={(event) => setTitle(event.target.value)}
+                lang="th"
               />
             </Field.Root>
             <div className={styles.dialogActions}>
@@ -161,9 +164,27 @@ function DialogueRow({ dialogue }: { dialogue: Dialogue }) {
  * rename/delete actions. There is no dedicated Menu primitive in the M1 UI
  * kit (src/ui), so "the menu" from PLAN.MD §4.3 is two inline row action
  * buttons rather than a dropdown.
+ *
+ * The status chip needs each dialogue's `AnnotationRecord` (for `status`/
+ * `lineErrors`), which - because IndexedDB always deserializes a full
+ * record, never a subset of fields - means loading the same large `lines`
+ * blob the separate `annotations` table exists to keep out of the common
+ * list/title/sourceText read (`.claude/rules/data.md`). That cost is
+ * unavoidable for the chip itself, but it's paid **once** here via a single
+ * batched `getAnnotationsByIds`, not once per row: the previous version ran
+ * one `useLiveQuery(getAnnotation)` - one Dexie read plus one live
+ * subscription - per dialogue.
  */
 export function DialogueList() {
   const dialogues = listDialogues()
+  const annotationIds = (dialogues ?? [])
+    .map((dialogue) => dialogue.currentAnnotationId)
+    .filter((id): id is string => id !== null)
+  const annotationIdsKey = annotationIds.join(',')
+  const annotations = useLiveQuery(
+    () => getAnnotationsByIds(annotationIds),
+    [annotationIdsKey],
+  )
 
   if (dialogues === undefined) return null
 
@@ -176,10 +197,24 @@ export function DialogueList() {
     )
   }
 
+  const annotationById = new Map<string, AnnotationRecord>()
+  annotationIds.forEach((id, index) => {
+    const record = annotations?.[index]
+    if (record) annotationById.set(id, record)
+  })
+
   return (
     <ul className={styles.list} aria-label="Dialogue library">
       {dialogues.map((dialogue) => (
-        <DialogueRow key={dialogue.id} dialogue={dialogue} />
+        <DialogueRow
+          key={dialogue.id}
+          dialogue={dialogue}
+          annotation={
+            dialogue.currentAnnotationId
+              ? annotationById.get(dialogue.currentAnnotationId)
+              : undefined
+          }
+        />
       ))}
     </ul>
   )
