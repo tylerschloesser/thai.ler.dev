@@ -5,6 +5,23 @@
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>thai.ler.dev</title>
+    <script>
+      // Pre-paint theme: read the persisted choice and set data-theme before
+      // first render so there is no flash of the wrong theme. Falls back to
+      // the OS preference (tokens.css: `color-scheme: light dark`) when
+      // localStorage has nothing, is unavailable (private mode, disabled),
+      // or holds something other than 'light' | 'dark'.
+      ;(function () {
+        try {
+          var theme = window.localStorage.getItem('thai.theme')
+          if (theme === 'light' || theme === 'dark') {
+            document.documentElement.dataset.theme = theme
+          }
+        } catch (e) {
+          // localStorage unavailable - fall back to the OS preference.
+        }
+      })()
+    </script>
   </head>
   <body>
     <div id="root"></div>

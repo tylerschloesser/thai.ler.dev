@@ -1,0 +1,27 @@
+@layer components {
+  .root {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .label {
+    font-size: var(--text-0);
+    font-weight: 500;
+    color: var(--color-fg);
+  }
+
+  .root[data-disabled] .label {
+    opacity: 0.5;
+  }
+
+  .description {
+    font-size: var(--text-0);
+    color: var(--color-fg-muted);
+  }
+
+  .error {
+    font-size: var(--text-0);
+    color: var(--color-danger);
+  }
+}

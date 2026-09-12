@@ -1,0 +1,67 @@
+/* Layer order is declared once, here, before anything else loads. Every
+   CSS Module under src/ui wraps its own rules in `@layer components { }`
+   so it slots into this order no matter which file Vite loads it from. */
+@layer reset, tokens, base, components;
+
+@import './reset.css' layer(reset);
+@import './tokens.css' layer(tokens);
+
+@layer base {
+  html {
+    background: var(--color-bg);
+    color-scheme: light dark;
+  }
+
+  html,
+  body {
+    min-height: 100%;
+  }
+
+  body {
+    background: var(--color-bg);
+    color: var(--color-fg);
+    font-family: var(--font-sans);
+    font-size: var(--text-1);
+    line-height: 1.5;
+  }
+
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    font-weight: 700;
+    line-height: 1.2;
+  }
+
+  a {
+    color: var(--color-accent);
+  }
+
+  a:hover {
+    color: var(--color-accent-hover);
+  }
+
+  hr {
+    border: none;
+    border-top: 1px solid var(--color-border);
+  }
+
+  ::selection {
+    background: var(--color-accent);
+    color: var(--color-accent-fg);
+  }
+
+  :focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 2px;
+  }
+
+  /* Any element rendering Thai text should carry lang="th" and pick this up. */
+  [lang='th'] {
+    font-family: var(--font-thai);
+    line-height: 1.9;
+    word-break: keep-all;
+  }
+}

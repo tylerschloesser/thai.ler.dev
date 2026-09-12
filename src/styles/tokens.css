@@ -1,0 +1,105 @@
+/* Semantic design tokens. Components reference these only - never a Radix
+   color variable (--sand-9, etc.) or a hard-coded color directly.
+
+   Color pairs are written as light-dark(<light>, <dark>) so the page follows
+   the OS color scheme automatically via `color-scheme` with zero JS, and can
+   be pinned explicitly via the [data-theme] attribute that src/app/theme.ts
+   sets pre-paint (see index.html).
+
+   The hex values are transcribed from @radix-ui/colors (sand, teal, grass,
+   amber, tomato, blue); the comments below name the scale and step. We do
+   NOT @import those files: Radix ships light and dark as separately scoped
+   rulesets (:root vs .dark), but light-dark() needs both values in one
+   declaration, so the vars can never be referenced here - importing them
+   only shipped ~13KB of dead custom properties. When changing a color, look
+   the step up in node_modules/@radix-ui/colors and keep the comment true. */
+
+:root {
+  color-scheme: light dark;
+
+  /* ---- color: neutral (sand) ---- */
+  --color-bg: light-dark(#fdfdfc, #111110);
+  --color-bg-subtle: light-dark(#f9f9f8, #191918);
+  --color-surface: light-dark(#f1f0ef, #222221);
+  --color-border: light-dark(#dad9d6, #3b3a37);
+  --color-border-strong: light-dark(#bcbbb5, #62605b);
+  --color-fg: light-dark(#21201c, #eeeeec);
+  --color-fg-muted: light-dark(#63635e, #b5b3ad);
+
+  /* ---- color: accent (teal) ---- */
+  --color-accent: light-dark(#12a594, #12a594);
+  --color-accent-hover: light-dark(#0d9b8a, #0eb39e);
+  --color-accent-fg: light-dark(#fdfdfc, #fdfdfc);
+
+  /* ---- color: status (grass / amber / tomato / blue, step 11) ---- */
+  --color-success: light-dark(#2a7e3b, #71d083);
+  --color-warning: light-dark(#ab6400, #ffca16);
+  --color-danger: light-dark(#d13415, #ff977d);
+  --color-info: light-dark(#0d74ce, #70b8ff);
+
+  /* Dialog/AlertDialog scrim. Not one of the §4.4 families, but every
+     modal needs one and it must come from a token, not a literal in
+     component CSS. */
+  --color-backdrop: light-dark(rgb(0 0 0 / 0.4), rgb(0 0 0 / 0.6));
+
+  /* ---- tone: Okabe-Ito colorblind-safe palette, lightened ~12% L in dark ---- */
+  --tone-mid: light-dark(#0072b2, #0099ef);
+  --tone-low: light-dark(#009e73, #00dba0);
+  --tone-falling: light-dark(#d55e00, #ff7b13);
+  --tone-high: light-dark(#e69f00, #ffbb24);
+  --tone-rising: light-dark(#cc79a7, #dda5c4);
+
+  /* ---- space (0.25rem base) ---- */
+  --space-1: 0.25rem;
+  --space-2: 0.5rem;
+  --space-3: 0.75rem;
+  --space-4: 1rem;
+  --space-5: 1.5rem;
+  --space-6: 2rem;
+  --space-7: 3rem;
+  --space-8: 4rem;
+
+  /* ---- radius ---- */
+  --radius-1: 0.25rem;
+  --radius-2: 0.5rem;
+  --radius-3: 0.75rem;
+
+  /* ---- type: 1.25 modular scale ---- */
+  --text-0: 0.8rem;
+  --text-1: 1rem;
+  --text-2: 1.25rem;
+  --text-3: 1.5625rem;
+  --text-4: 1.9531rem;
+  --text-5: 2.4414rem;
+
+  --font-sans: 'Sarabun', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-thai: 'Noto Sans Thai', 'Sarabun', sans-serif;
+
+  /* ---- elevation ---- */
+  --shadow-1: light-dark(
+    0 1px 2px rgb(0 0 0 / 0.06),
+    0 1px 2px rgb(0 0 0 / 0.4)
+  );
+  --shadow-2: light-dark(
+    0 4px 16px rgb(0 0 0 / 0.1),
+    0 4px 16px rgb(0 0 0 / 0.5)
+  );
+
+  /* ---- motion ---- */
+  --dur-1: 150ms;
+  --dur-2: 250ms;
+  --ease: cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Pre-paint script in index.html sets data-theme from localStorage before
+   first render; these overrides pin color-scheme (and therefore every
+   light-dark() token above) regardless of the OS preference. When neither
+   attribute is present, :root's `color-scheme: light dark` lets the OS
+   decide. */
+[data-theme='light'] {
+  color-scheme: light;
+}
+
+[data-theme='dark'] {
+  color-scheme: dark;
+}
