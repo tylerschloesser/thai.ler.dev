@@ -12,7 +12,7 @@ export interface WordChipProps {
 
 /**
  * One word in a `LineView` sentence: Thai on top, romanization/gloss
- * underneath as the display toggles allow (PLAN.MD §4.3). Clicking opens a
+ * underneath as the display toggles allow (docs/plans/P0.md §4.3). Clicking opens a
  * `WordPopover` with the full syllable/tone/notes breakdown.
  */
 export function WordChip({

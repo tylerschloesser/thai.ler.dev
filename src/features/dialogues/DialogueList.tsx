@@ -33,7 +33,7 @@ function firstNonBlankLine(sourceText: string): string {
 /**
  * The `AnnotationRecord.status` field only distinguishes 'partial' /
  * 'complete' (src/db/db.ts) - "failed" (every line errored, nothing to
- * show) is a UI-level refinement of 'partial' derived here, per PLAN.MD
+ * show) is a UI-level refinement of 'partial' derived here, per docs/plans/P0.md
  * §4.3's three-state chip.
  */
 function chipStatus(annotation: {
@@ -162,7 +162,7 @@ function DialogueRow({
  * `listDialogues` hook, re-exported from src/db/repo.ts), each row showing
  * title, first line, line count, a status chip, an open link, and
  * rename/delete actions. There is no dedicated Menu primitive in the M1 UI
- * kit (src/ui), so "the menu" from PLAN.MD §4.3 is two inline row action
+ * kit (src/ui), so "the menu" from docs/plans/P0.md §4.3 is two inline row action
  * buttons rather than a dropdown.
  *
  * The status chip needs each dialogue's `AnnotationRecord` (for `status`/

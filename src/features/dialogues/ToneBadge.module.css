@@ -16,7 +16,7 @@
 
   /* Color is an enhancement layered on top of the always-visible tone
      name text below - never the only signal for the tone (accessibility
-     requirement, .claude/rules/ui.md / PLAN.MD §4.3). */
+     requirement, .claude/rules/ui.md / docs/plans/P0.md §4.3). */
   .badge[data-colored][data-tone='mid'] {
     background: var(--tone-mid);
     border-color: transparent;

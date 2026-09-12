@@ -3,7 +3,7 @@ import type { Tone } from '../llm/schema'
 /**
  * The same Thai tone-rule table the LLM system prompt is built from (see
  * `src/llm/prompt.ts`), kept here as plain data for a future UI "why this
- * tone" explainer (PLAN.MD §4.2/§4.3). Only a type-only import from
+ * tone" explainer (docs/plans/P0.md §4.2/§4.3). Only a type-only import from
  * `src/llm/schema` is used, so this module carries no runtime dependency on
  * the LLM layer.
  */

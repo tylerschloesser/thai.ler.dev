@@ -29,7 +29,7 @@ Vitest + Playwright, deployed via the Vercel CLI (preview only).
 - `scripts/` — `e2e-vercel.sh`, `gen-fixture.ts`
 - `src/` — `app/` (router, providers, theme, debug hook), `routes/`
   (file-based), `lib/`, `styles/` + `ui/`, `db/`, `llm/` + `fixtures/`,
-  `features/` — see PLAN.MD §3
+  `features/` — see docs/plans/P0.md §3
 - `public/` — static assets (favicon)
 
 ## Hard rules
@@ -64,4 +64,5 @@ pnpm test:e2e` passing) — don't wait until a whole milestone finishes.
 | `.claude/rules/testing.md` | `e2e/**`, `**/*.test.ts`, `playwright.config.ts`, `vitest.config.ts` | Mock contract, seeding, speed budget, Vercel runs          |
 | `.claude/rules/deploy.md`  | `vercel.json`, `scripts/**`, `.env*`                                 | Preview-only policy, env vars, bypass secret               |
 
-See `PLAN.MD` for the full plan, architecture, and milestone status.
+See `PLAN.MD` for the current (P1) plan and `docs/plans/P0.md` for the
+as-built P0 record.

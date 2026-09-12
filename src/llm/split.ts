@@ -1,6 +1,6 @@
 /**
  * Deterministic, pure splitting of a pasted dialogue into speaker-tagged
- * lines. No LLM involvement here - see PLAN.MD §4.2.
+ * lines. No LLM involvement here - see docs/plans/P0.md §4.2.
  */
 
 export interface SplitLine {

@@ -16,7 +16,7 @@ export interface LineViewProps {
 }
 
 /**
- * One dialogue line (PLAN.MD §4.3): speaker label, word chips per sentence,
+ * One dialogue line (docs/plans/P0.md §4.3): speaker label, word chips per sentence,
  * the sentence translation underneath, and sentence-level notes in a
  * collapsible row. Falls back to the raw split text (with a pending/error
  * indicator) until the line has finished annotating.

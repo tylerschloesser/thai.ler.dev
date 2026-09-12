@@ -8,7 +8,7 @@ import sampleDialogueText from '../../fixtures/sample.dialogue.txt?raw'
 import styles from './Composer.module.css'
 
 /**
- * Paste-a-dialogue entry point (PLAN.MD §4.3). On submit: creates the
+ * Paste-a-dialogue entry point (docs/plans/P0.md §4.3). On submit: creates the
  * dialogue row, fires off the annotation pipeline (fire-and-forget - it
  * keeps running after this component navigates away), and navigates to
  * `/d/$id` immediately. Progress renders there via `AnnotateStatus`.

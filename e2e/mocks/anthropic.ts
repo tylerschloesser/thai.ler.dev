@@ -5,7 +5,7 @@ import type { LineAnnotation } from '../../src/llm/schema'
 
 /**
  * SSE builder + Playwright route handler for mocking
- * `https://api.anthropic.com/v1/messages` in e2e tests (PLAN.MD §4.6/§10).
+ * `https://api.anthropic.com/v1/messages` in e2e tests (docs/plans/P0.md §4.6/§10).
  * Exported separately so `e2e/fixtures.ts` can wire `anthropicMockRoute`
  * into its default `context.route(...)` handler while other tests can
  * still reach for `sseFromText` directly to build custom responses (e.g.

@@ -11,7 +11,7 @@ export interface AnnotateStatusProps {
 /**
  * "N/M lines" progress for one dialogue's annotation, with cancel and
  * retry-failed actions. Self-contained: mounts its own `useAnnotate`, so
- * any page can drop it in with just a dialogue id (PLAN.MD §4.3).
+ * any page can drop it in with just a dialogue id (docs/plans/P0.md §4.3).
  */
 export function AnnotateStatus({ dialogueId }: AnnotateStatusProps) {
   const {

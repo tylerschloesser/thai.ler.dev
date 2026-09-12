@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 /**
  * Structured-output schema for a single annotated dialogue line, per
- * PLAN.MD §4.2. Verified structured-output constraints: every property is
+ * docs/plans/P0.md §4.2. Verified structured-output constraints: every property is
  * required (no `.optional()` - use `.nullable()` instead), objects have no
  * unknown properties, there's no recursion, and there are no numeric or
  * string-length constraints (the SDK strips those into descriptions rather

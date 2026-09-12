@@ -7,7 +7,7 @@ import { nowIso } from '../lib/time'
 // `setSetting` / `useSetting`, never `db.settings.put` directly. It's kept
 // separate from `repo.ts` (rather than folded into its write-path API)
 // because settings are single-key rows with defaults, not soft-deletable
-// records — see PLAN.MD §4.1 and the file layout in CLAUDE.md.
+// records — see docs/plans/P0.md §4.1 and the file layout in CLAUDE.md.
 
 export type Theme = 'system' | 'light' | 'dark'
 

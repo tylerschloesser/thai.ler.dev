@@ -61,7 +61,7 @@ export async function listDialoguesAsync(): Promise<Dialogue[]> {
 /**
  * Live/reactive read for React components, built on `useLiveQuery`.
  * Named `useListDialogues` locally (and re-exported as `listDialogues`,
- * matching PLAN.MD §4.1's repo API) so oxlint's react-hooks(rules-of-hooks)
+ * matching docs/plans/P0.md §4.1's repo API) so oxlint's react-hooks(rules-of-hooks)
  * check — which requires a "use"-prefixed name on any function calling a
  * hook — doesn't flag it.
  */
@@ -96,7 +96,7 @@ export async function getAnnotationsByIds(
 /**
  * Creates a new (`status: 'partial'`) annotation record with `lineCount`
  * empty slots, ready for `upsertAnnotationLine` to fill in as the M3
- * pipeline's per-line calls land. Not itself listed in PLAN.MD §4.1's repo
+ * pipeline's per-line calls land. Not itself listed in docs/plans/P0.md §4.1's repo
  * API, but required to construct the record that API operates on.
  */
 export async function createAnnotation(params: {

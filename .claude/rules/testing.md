@@ -10,7 +10,7 @@ paths:
 
 `e2e/` (Playwright specs, `fixtures.ts`, `mocks/anthropic.ts`) plus
 `playwright.config.ts`/`vitest.config.ts` at the repo root. 19 Playwright
-specs and 70 Vitest tests exist today; see PLAN.MD §4.6 for the spec list.
+specs and 70 Vitest tests exist today; see docs/plans/P0.md §4.6 for the spec list.
 
 ## Mock contract
 

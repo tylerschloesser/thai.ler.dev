@@ -126,7 +126,7 @@ function mapError(err: unknown): AnnotateError {
 
 /**
  * Annotates a single dialogue line with one streamed structured-output
- * call, per PLAN.MD §4.2. Never passes `thinking` or `temperature` -
+ * call, per docs/plans/P0.md §4.2. Never passes `thinking` or `temperature` -
  * adaptive thinking is the default on Opus 5 / Sonnet 5 (.claude/rules/llm.md).
  */
 export async function annotateLine(

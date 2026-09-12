@@ -141,7 +141,7 @@ function renderTargetBlock(lines: SplitLine[], lineIndex: number): string {
 
 /**
  * Builds the two user-message content blocks for annotating one line, per
- * PLAN.MD §4.2's prompt-caching layout: the full dialogue first (stable per
+ * docs/plans/P0.md §4.2's prompt-caching layout: the full dialogue first (stable per
  * dialogue - the second cache breakpoint after the system prompt), then the
  * target-line instruction (varies per call, not cached).
  */

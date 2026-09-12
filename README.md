@@ -51,8 +51,10 @@ for the mock contract and seeding conventions.
 
 ## Deploying
 
-This project is CLI-linked to Vercel, not Git-connected — nothing deploys
-automatically on push.
+This project is deployed with the Vercel CLI. The Vercel project is also
+Git-connected (production branch `main`, which never receives pushes), so a
+push to `vercel` creates a preview deployment automatically; production is
+never deployed.
 
 ```sh
 pnpm deploy:preview   # `vercel deploy --yes` — preview only, always
@@ -85,8 +87,8 @@ That's tolerable _only_ because:
   gate enforcing it, so don't run it.
 
 A server-side proxy for the Anthropic call (removing the key from the
-client entirely) is a known follow-up, not yet built — see `PLAN.MD`'s
-"Next" list.
+client entirely) is a known follow-up, not yet built — it is the subject of
+`PLAN.MD` (the P1 plan); see also the "Next" list in `docs/plans/P0.md`.
 
 ## Project layout
 
@@ -102,5 +104,5 @@ client entirely) is a known follow-up, not yet built — see `PLAN.MD`'s
 - `scripts/` — `gen-fixture.ts` (regenerates the fixture with a real key) and `e2e-vercel.sh`
 
 See `CLAUDE.md` and `.claude/rules/*.md` for the rules an editing agent
-follows in each of these areas, and `PLAN.MD` for the full architecture and
-milestone history.
+follows in each of these areas, `PLAN.MD` for the current plan, and
+`docs/plans/P0.md` for the P0 architecture and milestone history.

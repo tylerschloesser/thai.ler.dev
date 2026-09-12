@@ -25,7 +25,7 @@ import type { LineAnnotation } from '../../llm/schema'
 // ---------------------------------------------------------------------------
 //
 // Composer starts a dialogue's annotation and navigates to /d/$id
-// immediately (PLAN.MD §4.3) - the pipeline keeps running after Composer
+// immediately (docs/plans/P0.md §4.3) - the pipeline keeps running after Composer
 // unmounts (it's a plain async call, not tied to a component's lifetime).
 // DialogueView then mounts its own `useAnnotate(dialogueId)` and must be
 // able to (a) observe that a run is already in flight rather than starting
@@ -211,7 +211,7 @@ export interface UseAnnotateResult {
  * `useLiveQuery`, so it stays correct even when this component didn't
  * start the run (e.g. Composer started it, DialogueView is watching it).
  * Auto-resumes once, on mount, whenever it finds a `status: 'partial'`
- * record with no run currently in flight (PLAN.MD §5 M4: "resume-on-open").
+ * record with no run currently in flight (docs/plans/P0.md §5 M4: "resume-on-open").
  */
 export function useAnnotate(dialogueId: string): UseAnnotateResult {
   const dialogue = useLiveQuery(() => getDialogue(dialogueId), [dialogueId])

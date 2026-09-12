@@ -28,7 +28,7 @@ Every primitive in `src/ui/` wraps a Base UI component (`@base-ui/react`):
   with an explicit `useId()`, passed as `htmlFor` on `Field.Label` and `id`
   on `Textarea` — otherwise the field has a visible label but no accessible
   name (confirmed via the rendered a11y tree, not just reading the source).
-- Kit (per PLAN.MD §4.3): `Button`, `Dialog`/`AlertDialog`, `Popover`,
+- Kit (per docs/plans/P0.md §4.3): `Button`, `Dialog`/`AlertDialog`, `Popover`,
   `Tooltip`, `Toast` (provider + `useToast`), `Select`, `Toggle`/
   `ToggleGroup`, `Field`, `Textarea`, `Spinner`, `EmptyState`.
 

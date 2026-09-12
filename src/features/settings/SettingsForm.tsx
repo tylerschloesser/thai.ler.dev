@@ -56,7 +56,7 @@ interface FormValues {
  * Settings apply immediately - every field persists to Dexie (via
  * `setSetting`, the only write path per .claude/rules/data.md) the moment
  * it changes, there is no separate Save step. TanStack Form is still used
- * for field wiring/validation (PLAN.MD §4.3); `defaultValues` only seeds
+ * for field wiring/validation (docs/plans/P0.md §4.3); `defaultValues` only seeds
  * the form once, so the effect below re-syncs it whenever the underlying
  * setting changes from elsewhere (e.g. an Import merge on this same page).
  * `theme` is the one exception: it is not a Dexie setting at all - it's

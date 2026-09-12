@@ -8,7 +8,7 @@ export interface SyllableRowProps {
 }
 
 /** One syllable inside `WordPopover`: Thai, romanization, `ToneBadge`, and
- * the "why this tone" explanation from the LLM output (PLAN.MD §4.3). */
+ * the "why this tone" explanation from the LLM output (docs/plans/P0.md §4.3). */
 export function SyllableRow({ syllable, toneColors }: SyllableRowProps) {
   return (
     <li className={styles.row}>

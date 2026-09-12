@@ -16,7 +16,7 @@ export type AnnotationStatus = 'partial' | 'complete'
 
 /**
  * Persistence functions the pipeline needs, injected by the caller so this
- * module stays testable without React and without `src/db` (PLAN.MD §4.2 /
+ * module stays testable without React and without `src/db` (docs/plans/P0.md §4.2 /
  * §5 M3). In the app these are thin wrappers around `src/db/repo.ts`; in
  * tests (and `scripts/gen-fixture.ts`) they can be in-memory.
  */
@@ -54,7 +54,7 @@ export interface PipelineOptions {
   client: Anthropic
   model: string
   signal?: AbortSignal
-  /** Defaults to 4, per PLAN.MD §4.2. */
+  /** Defaults to 4, per docs/plans/P0.md §4.2. */
   concurrency?: number
   onLine?: (event: LineEvent) => void
   repo: PipelineRepo

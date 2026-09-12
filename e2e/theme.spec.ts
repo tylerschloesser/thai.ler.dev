@@ -36,7 +36,7 @@ test.describe('theme', () => {
 
 test.describe('keyboard nav', () => {
   // These two cases originally drove the M1 kitchen sink's generic
-  // Dialog/Select demos on `/`, which M4 removes (PLAN.MD §5 M1/M4). The
+  // Dialog/Select demos on `/`, which M4 removes (docs/plans/P0.md §5 M1/M4). The
   // Dialog case is repointed at the real Rename dialog (src/features/
   // dialogues/DialogueList.tsx), which is the same Dialog/Escape behavior
   // against production markup instead of a demo - an equally strong (if

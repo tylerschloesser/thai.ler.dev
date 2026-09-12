@@ -2,7 +2,7 @@ import Dexie from 'dexie'
 import type { EntityTable } from 'dexie'
 import { newId } from '../lib/ids'
 
-// --- Sync-readiness base shape (PLAN.MD §4.1) --------------------------
+// --- Sync-readiness base shape (docs/plans/P0.md §4.1) --------------------------
 
 export interface Base {
   id: string
@@ -30,7 +30,7 @@ export interface Dialogue extends Base {
 
 // --- Annotation line shape ----------------------------------------------
 // Placeholder mirror of M3's `LineAnnotationSchema` (src/llm/schema.ts,
-// zod, PLAN.MD §4.2). src/db must not depend on src/llm, so these are
+// zod, docs/plans/P0.md §4.2). src/db must not depend on src/llm, so these are
 // plain structural interfaces kept in sync by hand; M3 should either keep
 // these in step with its zod schema or replace them with `z.infer<...>`
 // re-exports once it lands.
@@ -169,7 +169,7 @@ export class ThaiLerDb extends Dexie {
     })
     // Fires exactly once, the first time this database is created on a
     // device, so this is where a fresh `deviceId` is minted and stays
-    // stable thereafter (sync-readiness: PLAN.MD §4.5).
+    // stable thereafter (sync-readiness: docs/plans/P0.md §4.5).
     this.on('populate', () => {
       void this.meta.bulkAdd([
         { key: 'deviceId', value: newId() },
@@ -200,7 +200,7 @@ export async function purgeTombstones(now: Date = new Date()): Promise<number> {
     .below(cutoff)
     .primaryKeys()
 
-  // `annotations` has no `deletedAt` index (PLAN.MD §4.1 lists only `id,
+  // `annotations` has no `deletedAt` index (docs/plans/P0.md §4.1 lists only `id,
   // dialogueId, updatedAt`), so this is a full-table filter instead. Fine
   // at this app's scale.
   const staleAnnotationIds = await db.annotations

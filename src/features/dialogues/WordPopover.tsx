@@ -33,7 +33,7 @@ export interface WordPopoverProps {
 
 /**
  * Popover content for one word chip: header (Thai/romanization/gloss/POS),
- * a `SyllableRow` per syllable, and notes grouped by kind (PLAN.MD §4.3).
+ * a `SyllableRow` per syllable, and notes grouped by kind (docs/plans/P0.md §4.3).
  * The Popover chrome itself (positioner/portal/arrow) lives in `WordChip`,
  * which renders this as its popup body.
  */

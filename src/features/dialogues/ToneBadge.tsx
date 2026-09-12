@@ -10,7 +10,7 @@ export interface ToneBadgeProps {
 }
 
 /**
- * Colour + tone name (PLAN.MD §4.3). The name is always rendered as text -
+ * Colour + tone name (docs/plans/P0.md §4.3). The name is always rendered as text -
  * never relies on colour alone - so it stays legible with `toneColors`
  * toggled off (`.claude/rules/ui.md` accessibility requirement).
  */

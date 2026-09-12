@@ -9,3 +9,5 @@ coverage
 
 # Not owned by app tooling; pre-existing formatting, do not reformat.
 PLAN.MD
+docs/plans/*.md
+PROMPT.md

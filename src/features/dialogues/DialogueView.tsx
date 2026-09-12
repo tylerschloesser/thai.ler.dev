@@ -72,7 +72,7 @@ function useDisplaySettings(): DisplaySettings | undefined {
   )
 }
 
-/** Mirrors `useAnnotate`'s per-line status derivation (PLAN.MD §5 M4), kept
+/** Mirrors `useAnnotate`'s per-line status derivation (docs/plans/P0.md §5 M4), kept
  * local rather than mounting a second `useAnnotate(dialogueId)` instance
  * here just to read it - `AnnotateStatus` below already owns the one
  * instance that drives progress/cancel/retry for this page. */
@@ -108,7 +108,7 @@ export interface DialogueViewProps {
 }
 
 /**
- * The rendered annotation page (`/d/$id`, PLAN.MD §4.3): title with inline
+ * The rendered annotation page (`/d/$id`, docs/plans/P0.md §4.3): title with inline
  * rename, a meta line (model, date, re-annotate, delete, export), the
  * display toggles, `AnnotateStatus` for in-flight progress, then a
  * `LineView` per line.
@@ -126,7 +126,7 @@ export function DialogueView({ dialogueId }: DialogueViewProps) {
 
   // Toasts each newly-failed line exactly once, keyed by the exact error
   // text so a line that fails again with a different message re-toasts
-  // (PLAN.MD §4.6 `errors` spec) but a re-render never duplicates one.
+  // (docs/plans/P0.md §4.6 `errors` spec) but a re-render never duplicates one.
   const toastedErrorsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!annotation) return

@@ -9,10 +9,14 @@ paths:
 
 ## Preview-only, always
 
-This project deploys to Vercel via the CLI (the repo is CLI-linked, not
-Git-connected). The production alias `thai-ler-dev.vercel.app` is
-**public**, and the Anthropic API key ships in the client bundle — so
-**never** run `vercel --prod` or `vercel deploy --prod`, and never add
+This project deploys to Vercel via the CLI. The Vercel project is also
+Git-connected to `tylerschloesser/thai.ler.dev` with production branch
+`main` (verified 2026-09-12: every push to `vercel` creates a Git-triggered
+**preview** deployment; nothing reaches production because `main` never
+receives pushes). The production alias `thai-ler-dev.vercel.app` is
+**public** (it still serves the untouched "vite init" commit), and the
+Anthropic API key ships in the client bundle — so **never** run `vercel
+--prod` or `vercel deploy --prod`, never push to `main`, and never add
 secrets to the `production` environment. `pnpm deploy:preview` (`vercel
 deploy --yes`) is the only sanctioned deploy command, and it targets
 preview by default.
