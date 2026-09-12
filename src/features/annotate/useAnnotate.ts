@@ -242,12 +242,21 @@ export function useAnnotate(dialogueId: string): UseAnnotateResult {
       if (!dialogue || !annotation) {
         throw new Error('No annotation to resume for this dialogue yet.')
       }
+      // Re-read rather than trusting the useLiveQuery snapshot. That snapshot
+      // lags the pipeline's own writes, so it can still show lines as null
+      // that have in fact just landed - and resumeAnnotation re-runs every
+      // null line, which would mean a second paid API call per line and
+      // overwriting good results. Read the record as it is right now.
+      const fresh = await getAnnotation(annotation.id)
+      if (!fresh) {
+        throw new Error('No annotation to resume for this dialogue yet.')
+      }
       return runPipeline(dialogueId, (opts) =>
         resumeAnnotation(
           {
-            annotationId: annotation.id,
+            annotationId: fresh.id,
             sourceText: dialogue.sourceText,
-            lines: annotation.lines as Array<LineAnnotation | null>,
+            lines: fresh.lines as Array<LineAnnotation | null>,
           },
           opts,
         ),

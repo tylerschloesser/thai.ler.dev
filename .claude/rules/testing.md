@@ -38,6 +38,21 @@ Chromium only, one shared `webServer` (`vite preview` on 4173 unless
 `PLAYWRIGHT_BASE_URL` is set), no `waitForTimeout` polling loops. Measure
 suite time in M4 and shard if it creeps up.
 
+## Never `waitForFunction` with an async predicate
+
+`page.waitForFunction(async () => ...)` resolves as soon as the returned
+**Promise** is seen as truthy, so it "passes" after a single poll no matter
+what the predicate actually returns. It looks like a wait and is a no-op.
+Three specs shipped with this and were silently asserting on mid-flight
+state. Use `expect.poll()` with `page.evaluate()` instead - `evaluate`
+awaits the promise and `poll` retries on the real value:
+
+```ts
+await expect
+  .poll(() => page.evaluate(async () => (await read()).status))
+  .toBe('complete')
+```
+
 ## Prefer `test.fixme` over weakened assertions
 
 If a spec can't be made to pass without loosening what it actually checks

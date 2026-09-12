@@ -1,0 +1,49 @@
+@layer components {
+  .badge {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--space-1);
+    padding: 0 var(--space-2);
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-1);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    font-size: var(--text-0);
+    text-transform: capitalize;
+    line-height: 1.6;
+    white-space: nowrap;
+  }
+
+  /* Color is an enhancement layered on top of the always-visible tone
+     name text below - never the only signal for the tone (accessibility
+     requirement, .claude/rules/ui.md / PLAN.MD §4.3). */
+  .badge[data-colored][data-tone='mid'] {
+    background: var(--tone-mid);
+    border-color: transparent;
+    color: var(--color-accent-fg);
+  }
+
+  .badge[data-colored][data-tone='low'] {
+    background: var(--tone-low);
+    border-color: transparent;
+    color: var(--color-accent-fg);
+  }
+
+  .badge[data-colored][data-tone='falling'] {
+    background: var(--tone-falling);
+    border-color: transparent;
+    color: var(--color-accent-fg);
+  }
+
+  .badge[data-colored][data-tone='high'] {
+    background: var(--tone-high);
+    border-color: transparent;
+    color: var(--color-accent-fg);
+  }
+
+  .badge[data-colored][data-tone='rising'] {
+    background: var(--tone-rising);
+    border-color: transparent;
+    color: var(--color-accent-fg);
+  }
+}

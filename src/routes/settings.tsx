@@ -1,4 +1,6 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { SettingsForm } from '../features/settings/SettingsForm'
+import { ExportImport } from '../features/settings/ExportImport'
 
 export const Route = createFileRoute('/settings')({
   component: Settings,
@@ -6,9 +8,18 @@ export const Route = createFileRoute('/settings')({
 
 function Settings() {
   return (
-    <div>
+    <div
+      style={{
+        display: 'flex',
+        flexDirection: 'column',
+        gap: 'var(--space-6)',
+        maxWidth: '72ch',
+        margin: '0 auto',
+      }}
+    >
       <h1>Settings</h1>
-      <p>Model, API key, display defaults, and theme will live here.</p>
+      <SettingsForm />
+      <ExportImport />
     </div>
   )
 }

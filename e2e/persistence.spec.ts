@@ -59,19 +59,25 @@ test.describe('persistence', () => {
     if (!dialogueId)
       throw new Error('Could not read the dialogue id from the URL.')
 
-    await page.waitForFunction(
-      async (id) => {
-        const win = window as unknown as DebugWindow
-        const dialogue = await win.__thai.db.dialogues.get(id)
-        if (!dialogue?.currentAnnotationId) return false
-        const annotation = await win.__thai.db.annotations.get(
-          dialogue.currentAnnotationId,
-        )
-        return annotation?.status === 'complete'
-      },
-      dialogueId,
-      { timeout: 10_000 },
-    )
+    // NB: use expect.poll + page.evaluate, never page.waitForFunction with an
+    // async predicate. waitForFunction resolves on the returned Promise being
+    // truthy, so an async predicate always "passes" after a single poll and
+    // the wait silently does nothing. page.evaluate does await properly.
+    await expect
+      .poll(
+        () =>
+          page.evaluate(async (id) => {
+            const win = window as unknown as DebugWindow
+            const dialogue = await win.__thai.db.dialogues.get(id)
+            if (!dialogue?.currentAnnotationId) return null
+            const annotation = await win.__thai.db.annotations.get(
+              dialogue.currentAnnotationId,
+            )
+            return annotation?.status ?? null
+          }, dialogueId),
+        { timeout: 15_000 },
+      )
+      .toBe('complete')
 
     const beforeReload = await readAnnotationState(page, dialogueId)
     expect(beforeReload?.status).toBe('complete')

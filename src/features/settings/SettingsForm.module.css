@@ -1,0 +1,59 @@
+@layer components {
+  .root {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-5);
+  }
+
+  .applyNote {
+    margin: 0;
+    color: var(--color-fg-muted);
+    font-size: var(--text-0);
+  }
+
+  .toggleField {
+    gap: var(--space-2);
+  }
+
+  .apiKeyRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .input {
+    flex: 1;
+    min-width: 0;
+    padding: var(--space-2) var(--space-3);
+    background: var(--color-surface);
+    color: var(--color-fg);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2);
+    font-family: var(--font-sans);
+    font-size: var(--text-1);
+  }
+
+  .input:hover {
+    border-color: var(--color-border-strong);
+  }
+
+  .input:focus-visible {
+    outline: 2px solid var(--color-accent);
+    outline-offset: 1px;
+  }
+
+  .input::placeholder {
+    color: var(--color-fg-muted);
+  }
+
+  .fieldError {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: var(--text-0);
+  }
+
+  .range {
+    width: 100%;
+    accent-color: var(--color-accent);
+  }
+}

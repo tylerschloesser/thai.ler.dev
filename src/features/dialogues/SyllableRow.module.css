@@ -1,0 +1,39 @@
+@layer components {
+  .row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: baseline;
+    gap: var(--space-2);
+    padding: var(--space-1) 0;
+    border-bottom: 1px solid var(--color-border);
+  }
+
+  .row:last-child {
+    border-bottom: none;
+  }
+
+  .thai {
+    font-family: var(--font-thai);
+    line-height: 1.9;
+    word-break: keep-all;
+    font-size: var(--text-2);
+  }
+
+  .romanization {
+    color: var(--color-fg-muted);
+    font-size: var(--text-0);
+  }
+
+  .meaning {
+    color: var(--color-fg-muted);
+    font-size: var(--text-0);
+    font-style: italic;
+  }
+
+  .explanation {
+    flex-basis: 100%;
+    margin: 0;
+    color: var(--color-fg-muted);
+    font-size: var(--text-0);
+  }
+}

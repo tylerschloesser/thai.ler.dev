@@ -1,15 +1,11 @@
 import { createFileRoute } from '@tanstack/react-router'
+import { DialogueView } from '../features/dialogues/DialogueView'
 
 export const Route = createFileRoute('/d/$id')({
-  component: DialogueView,
+  component: DialogueViewRoute,
 })
 
-function DialogueView() {
+function DialogueViewRoute() {
   const { id } = Route.useParams()
-  return (
-    <div>
-      <h1>Dialogue {id}</h1>
-      <p>The annotated dialogue will render here.</p>
-    </div>
-  )
+  return <DialogueView dialogueId={id} />
 }

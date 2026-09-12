@@ -1,0 +1,92 @@
+@layer components {
+  .line {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-2);
+    padding: var(--space-4);
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-2);
+  }
+
+  .line[data-status='error'] {
+    border-color: var(--color-danger);
+  }
+
+  .speakerRow {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+  }
+
+  .speaker {
+    font-weight: 600;
+    color: var(--color-fg-muted);
+    font-size: var(--text-0);
+  }
+
+  .statusBadge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 var(--space-2);
+    border-radius: var(--radius-1);
+    background: var(--color-danger);
+    color: var(--color-accent-fg);
+    font-size: var(--text-0);
+  }
+
+  .rawThai {
+    margin: 0;
+    font-family: var(--font-thai);
+    line-height: 1.9;
+    word-break: keep-all;
+    font-size: var(--text-2);
+    color: var(--color-fg-muted);
+  }
+
+  .errorText {
+    margin: 0;
+    color: var(--color-danger);
+    font-size: var(--text-0);
+  }
+
+  .sentences {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-3);
+  }
+
+  .sentence {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+  }
+
+  .words {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    gap: var(--space-1);
+  }
+
+  .translation {
+    margin: 0;
+    color: var(--color-fg-muted);
+    font-size: var(--text-1);
+  }
+
+  .notes {
+    font-size: var(--text-0);
+    color: var(--color-fg-muted);
+  }
+
+  .notes summary {
+    cursor: pointer;
+    color: var(--color-fg);
+  }
+
+  .notes ul {
+    margin: var(--space-1) 0 0;
+    padding-left: var(--space-4);
+  }
+}
