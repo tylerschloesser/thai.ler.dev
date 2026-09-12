@@ -1,0 +1,11 @@
+node_modules
+dist
+pnpm-lock.yaml
+src/routeTree.gen.ts
+playwright-report
+test-results
+.vercel
+coverage
+
+# Not owned by app tooling; pre-existing formatting, do not reformat.
+PLAN.MD
