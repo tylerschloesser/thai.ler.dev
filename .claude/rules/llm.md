@@ -17,8 +17,11 @@ Model ids are exactly `claude-opus-5` (default) and `claude-sonnet-5`
 `src/llm/client.ts` constructs `new Anthropic({ apiKey,
 dangerouslyAllowBrowser: true })`; the SDK adds the required CORS header
 itself. Key resolution order: Settings override, then
-`import.meta.env.ANTHROPIC_API_KEY` (Vite `envPrefix` includes
-`ANTHROPIC_API_KEY`). `scripts/gen-fixture.ts` runs in Node with a real key
+`import.meta.env.ANTHROPIC_API_KEY` — but since P1 M0 `vite.config.ts` has
+no `envPrefix` (default `VITE_` only), so that value is never inlined and in
+practice the browser client works only with a Settings override until M3
+moves the call server-side (e2e seeds a dummy one, see `testing.md`).
+`scripts/gen-fixture.ts` runs in Node with a real key
 and does **not** need `dangerouslyAllowBrowser`.
 
 ## Never pass these params

@@ -1,5 +1,5 @@
-import { TONE_RULES, type ToneMark } from '../lib/tone'
-import type { SplitLine } from './split'
+import { TONE_RULES, type ToneMark } from '../lib/tone.js'
+import type { SplitLine } from './split.js'
 
 /**
  * Bump whenever `SYSTEM_PROMPT` or the zod schema shape changes, and

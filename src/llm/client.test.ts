@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { createAnthropicClient, MissingApiKeyError } from './client'
+import { createAnthropicClient, MissingApiKeyError } from './client.js'
 
 describe('createAnthropicClient', () => {
   afterEach(() => {

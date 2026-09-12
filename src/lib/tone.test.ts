@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { lookupTone } from './tone'
+import { lookupTone } from './tone.js'
 
 describe('lookupTone', () => {
   it('mid class, live syllable, no tone mark -> mid', () => {

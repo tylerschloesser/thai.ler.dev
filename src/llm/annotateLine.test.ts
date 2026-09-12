@@ -1,9 +1,9 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { describe, expect, it } from 'vitest'
-import { sseFromText } from '../../e2e/mocks/anthropic'
-import { AnnotateError, annotateLine } from './annotateLine'
-import type { LineAnnotation } from './schema'
-import type { SplitLine } from './split'
+import { sseFromText } from '../../e2e/mocks/anthropic.js'
+import { AnnotateError, annotateLine } from './annotateLine.js'
+import type { LineAnnotation } from './schema.js'
+import type { SplitLine } from './split.js'
 
 const LINES: SplitLine[] = [{ speaker: 'A', text: 'สวัสดีครับ' }]
 

@@ -48,8 +48,12 @@ async function readAnnotationState(
 }
 
 test.describe('persistence', () => {
-  test('an annotated dialogue survives a reload', async ({ page }) => {
+  test('an annotated dialogue survives a reload', async ({
+    page,
+    seedApiKey,
+  }) => {
     await page.goto('/')
+    await seedApiKey()
 
     await page.getByRole('button', { name: 'Load sample' }).click()
     await page.getByRole('button', { name: 'Annotate' }).click()

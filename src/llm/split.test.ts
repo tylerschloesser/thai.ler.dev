@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest'
-import { splitDialogue } from './split'
+import { splitDialogue } from './split.js'
 
 describe('splitDialogue', () => {
   it('splits on newlines and extracts ASCII-colon speakers', () => {

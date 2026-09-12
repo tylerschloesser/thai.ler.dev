@@ -28,6 +28,10 @@ milestone marker that doesn't match reality) as a FAIL in its own right,
 independent of the brief's stated acceptance criteria — a false claim about
 the repo is worse than a missing one.
 
+For runner changes, count the Blob writes the tests assert (flush cadence is
+a quota budget, PLAN.MD §4.3) — an untested write count is a FAIL. A stale
+env-var, route or command claim in `.claude/rules/api.md` is a FAIL too.
+
 Report PASS or FAIL. On FAIL, give file:line evidence for every finding and
 be specific enough that the implementer can fix it without re-deriving your
 reasoning. On PASS, briefly state which commands you ran and their results.

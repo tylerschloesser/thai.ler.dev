@@ -11,7 +11,7 @@ set +a
 
 raw=$(vercel deploy --yes)
 
-# Vercel CLI 56.x prints a JSON envelope on stdout when stdout is not a TTY;
+# Vercel CLI 56.x-59.x prints a JSON envelope on stdout when stdout is not a TTY;
 # other versions print the bare URL. Handle both.
 url=$(printf '%s\n' "$raw" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\(https:\/\/[^"]*\)".*/\1/p' | head -n 1)
 [ -n "$url" ] || url=$(printf '%s\n' "$raw" | grep -o 'https://[^"[:space:]]*\.vercel\.app' | head -n 1)
@@ -22,4 +22,5 @@ url=$(printf '%s\n' "$raw" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\(https:
 }
 
 echo "Preview: $url"
-PLAYWRIGHT_BASE_URL="$url" pnpm exec playwright test "$@"
+PLAYWRIGHT_BASE_URL="$url" pnpm exec playwright test --grep @live "$@"
+echo "Reminder: note Blob usage (Storage → thai-ler-dev-preview → Usage) in the commit body."

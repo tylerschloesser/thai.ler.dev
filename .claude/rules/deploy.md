@@ -3,67 +3,110 @@ paths:
   - 'vercel.json'
   - 'scripts/**'
   - '.env*'
+  - 'api/_lib/env.ts'
 ---
 
 # Deploy rules
 
-## Preview-only, always
+## Git-connected reality
 
-This project deploys to Vercel via the CLI. The Vercel project is also
-Git-connected to `tylerschloesser/thai.ler.dev` with production branch
-`main` (verified 2026-09-12: every push to `vercel` creates a Git-triggered
-**preview** deployment; nothing reaches production because `main` never
-receives pushes). The production alias `thai-ler-dev.vercel.app` is
-**public** (it still serves the untouched "vite init" commit), and the
-Anthropic API key ships in the client bundle — so **never** run `vercel
---prod` or `vercel deploy --prod`, never push to `main`, and never add
-secrets to the `production` environment. `pnpm deploy:preview` (`vercel
-deploy --yes`) is the only sanctioned deploy command, and it targets
-preview by default.
+The Vercel project (`thai-ler-dev`, `prj_mZ6rdu95y6OVvaHsmqpDkibFXKIv`,
+team `team_4mFhw0OaMx19wdVvfq9sEZuX`) is Git-connected to
+`tylerschloesser/thai.ler.dev` with production branch **`main`** — a push
+to `vercel` creates a Git-triggered preview (`source: "git"`), never a
+production deploy, as long as `main` never receives pushes (hard rule 10).
+`pnpm test:e2e:vercel` (`scripts/e2e-vercel.sh`) deploys a separate,
+CLI-triggered preview (`source: "cli"`) with `vercel deploy --yes` and runs
+the `@live` Playwright suite against it. Production is not deployed at all
+until M6, when Tyler switches the dashboard's production branch to
+`vercel` — from that point on, a push to `vercel` **is** the production
+deploy. Never run `vercel --prod` or `vercel deploy --prod` under any
+circumstance, and never push to `main`.
 
-## Env vars
+## Env vars per environment (as of M0)
 
-`ANTHROPIC_API_KEY` is set on the Vercel project's `preview` environment
-only, via:
+| Var                               | production | preview                                                            | development                                      |
+| --------------------------------- | ---------- | ------------------------------------------------------------------ | ------------------------------------------------ |
+| `ANTHROPIC_API_KEY`               | unset      | plain (P0 var; becomes sensitive when Tyler provides the real key) | shell export only                                |
+| `INTERNAL_SECRET`                 | unset      | sensitive                                                          | plain                                            |
+| `ALLOW_TEST_MODE`                 | **never**  | `1` (stored sensitive by CLI default)                              | `1` (local plugin default, not a Vercel env var) |
+| `BLOB_READ_WRITE_TOKEN`           | unset      | auto (`thai-ler-dev-preview`)                                      | auto (`thai-ler-dev-preview`)                    |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | auto       | auto                                                               | n/a                                              |
+
+Add or replace a value with `printf '%s' "$VALUE" | vercel env add NAME
+<env> [--sensitive]`; never `echo` a secret into a command, and never add
+anything to `production` before M6. Never set `ALLOW_TEST_MODE` or
+`MODEL_PROVIDER=fake` in the `production` environment at any milestone.
+
+## Blob store
+
+One private store per environment pair, region `iad1`, access mode fixed
+at creation: `thai-ler-dev-preview` (connected to `preview` **and**
+`development`, created in M0) and `thai-ler-dev-prod` (`production`,
+created in M6). All server reads pass `useCache: false`
+(`.claude/rules/api.md`); nothing in the browser ever sees a Blob URL.
+
+## `.env*` file rules
+
+`.env.local` and `.env.development.local` are both gitignored (`.env*`)
+and both denied to `Read` by `.claude/settings.json` — never read, print,
+or write either file. `vercel link --yes` **creates** `.env.local` (it
+pulls the `development` environment), and `vercel blob create-store
+--environment development` / `vercel env add … development` **update** it
+again — so the file existing proves nothing about whether the bypass
+secret is in it; check before linking, not after. `vercel env pull` only
+ever writes to an explicit, non-`.env.local` filename:
 
 ```sh
-printf '%s' "$ANTHROPIC_API_KEY" | vercel env add ANTHROPIC_API_KEY preview
+vercel env pull .env.development.local --environment=development
 ```
 
-Never print the key, and never add it to `production`.
+Never run a bare `vercel env pull` (it would target `.env.local` and wipe
+the bypass secret without restoring it — `vercel env pull` doesn't fetch
+that secret at all). `scripts/load-env.ts` reads `.env.development.local`
+then `.env.local`, never overrides an already-set shell var, never logs a
+value, and skips `VERCEL`/every `VERCEL_*` key (except
+`VERCEL_AUTOMATION_BYPASS_SECRET` and `VERCEL_OIDC_TOKEN`) plus
+`TURBO_*`/`NX_DAEMON`, so a local process never mistakes itself for a
+Vercel runtime.
 
 ## Protection bypass secret
 
-Preview (and production) `*.vercel.app` URLs sit behind Vercel SSO
-(Standard Protection). `VERCEL_AUTOMATION_BYPASS_SECRET` lives only in the
-gitignored `.env.local` and lets `scripts/e2e-vercel.sh` / Playwright reach
-the preview with a `x-vercel-protection-bypass` header.
-
-Verify it still matches the project with:
+Preview and (once deployed) production URLs sit behind Vercel Authentication.
+`VERCEL_AUTOMATION_BYPASS_SECRET` lives only in the gitignored `.env.local`
+and lets `scripts/e2e-vercel.sh` / Playwright reach a preview with the
+`x-vercel-protection-bypass` header. Verify it still matches the project
+with:
 
 ```sh
 vercel api "/v9/projects/prj_mZ6rdu95y6OVvaHsmqpDkibFXKIv?teamId=team_4mFhw0OaMx19wdVvfq9sEZuX"
 ```
 
 and compare the `protectionBypass` value — **not** `vercel env pull`, which
-only writes system/git-scoped env vars and omits this secret entirely; running
-it would silently overwrite `.env.local` without the bypass secret. If the
-secret is ever missing or stale, ask Tyler to regenerate it in the
-dashboard (Settings → Deployment Protection → Protection Bypass for
-Automation) rather than trying to recreate it from the CLI.
+never writes this secret and would silently leave `.env.local` without it.
+If it's ever missing or stale, ask Tyler to regenerate it in the dashboard
+(Settings → Deployment Protection → Protection Bypass for Automation)
+rather than trying to recreate it from the CLI. For a one-off check against
+a specific deployment, `vercel curl <path> --deployment <url>` (beta, CLI
+59.16.0) adds the protection bypass itself and needs no `.env.local` at
+all — Playwright still needs `VERCEL_AUTOMATION_BYPASS_SECRET` exported.
 
 ## Getting a preview URL
 
-CLI 56.4.1 does not print a bare URL to a pipe — when stdout isn't a TTY,
-`vercel deploy --yes` prints a JSON envelope containing a `"url"` field
-instead. `scripts/e2e-vercel.sh` parses that JSON out of stdout (with a
-regex fallback for a bare `https://*.vercel.app` URL, in case a future CLI
-version changes back). Don't assume a plain URL comes back from piping or
-capturing `vercel deploy` output — check the actual stdout shape first.
-Report the resolved URL back after any deploy-verification step.
+CLI 59.16.0's `vercel deploy --yes` still prints a pretty-printed JSON
+envelope to a non-TTY stdout (containing a `"url"` field) rather than a
+bare URL. `scripts/e2e-vercel.sh` parses that JSON out of stdout, with a
+regex fallback for a bare `https://*.vercel.app` string in case a future
+CLI version changes the shape again. Don't assume a plain URL comes back
+from piping or capturing `vercel deploy` output — check the actual stdout
+shape first. Report the resolved URL back after any deploy-verification
+step.
 
 ## Per-milestone flow
 
-`pnpm check && pnpm test && pnpm test:e2e` green → commit → `git push origin
-vercel` → `pnpm test:e2e:vercel` (deploys a fresh preview and runs the full
-suite against it). Do this at least at the end of M0, M4, and M5.
+`pnpm check && pnpm test && pnpm test:e2e` green → commit → `pnpm
+test:e2e:vercel` (CLI preview + `@live` suite) green → `git push origin
+vercel`. Do the full gate at least at the end of every milestone (M0, M1,
+M4, M5, M6 per PLAN.MD §5 at minimum); commit as soon as a task is verified
+but only push once the full gate is green, since a push always creates at
+least a Git preview today and will be a production deploy after M6.

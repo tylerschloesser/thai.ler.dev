@@ -10,6 +10,12 @@ checks, and the commands to run. Read `CLAUDE.md` and any `.claude/rules/*.md`
 files whose `paths` glob covers the files you're touching before writing
 code — they are the source of truth for conventions in this repo.
 
+Before touching anything in a worktree, run `git merge-base --is-ancestor
+origin/vercel HEAD || exit 1` and confirm `git log -1` shows a P1 commit
+(agent worktrees have branched from `main` before); if either check fails,
+stop and report. Never write `.env.local` or `.env.development.local`, and
+never set `ALLOW_TEST_MODE` in the Vercel `production` environment.
+
 Implement the brief exactly within the files you own. Do not touch files
 outside your brief, even if you notice something else that looks wrong —
 note it in your report instead. Run `pnpm check && pnpm test` (and any named

@@ -1,12 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
-import { SYSTEM_PROMPT, buildUserMessage } from './prompt'
+import { SYSTEM_PROMPT, buildUserMessage } from './prompt.js'
 import {
   checkInvariants,
   LineAnnotationSchema,
   type LineAnnotation,
-} from './schema'
-import type { SplitLine } from './split'
+} from './schema.js'
+import type { SplitLine } from './split.js'
 
 export type AnnotateErrorKind =
   | 'authentication'

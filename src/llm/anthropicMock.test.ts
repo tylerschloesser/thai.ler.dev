@@ -1,12 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { LineAnnotationSchema, type LineAnnotation } from './schema'
+import { LineAnnotationSchema, type LineAnnotation } from './schema.js'
 import {
   anthropicMockRoute,
   sseFromText,
   type MockRoute,
-} from '../../e2e/mocks/anthropic'
+} from '../../e2e/mocks/anthropic.js'
 
 const SAMPLE_LINE: LineAnnotation = {
   speaker: 'A',

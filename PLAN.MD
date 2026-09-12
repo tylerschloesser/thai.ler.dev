@@ -662,7 +662,7 @@ milestone ends with `pnpm check && pnpm test && pnpm test:e2e` green, a
 commit, `pnpm test:e2e:vercel` green (M0, M1, M4, M5, M6 at minimum), the
 Blob usage number noted in the commit body, and a push.
 
-### M0 — Spike, scaffolding, deploy loop `[ ]` (serial, one implementer + orchestrator)
+### M0 — Spike, scaffolding, deploy loop `[~]` (serial, one implementer + orchestrator)
 
 1. Orchestrator: `vercel link --yes --project thai-ler-dev --scope
 tylerschloessers-projects`; confirm `.env.local` exists with
@@ -1261,6 +1261,65 @@ export async function pull(): Promise<PullCounts> {
   await setMeta('lastPullAt', nowIso())
 }
 ```
+
+**Corrected during M0** (2026-09-12):
+
+- `vercel link --yes` on CLI 59.16.0 **creates `.env.local`** (it pulls the
+  development environment), and `vercel blob create-store … --environment
+  development` / `vercel env add … development` **update** it again. So
+  "`.env.local` exists" no longer proves the bypass secret is there: check
+  for the file _before_ linking. Such files also carry Vercel system
+  variables (`VERCEL=1`, `VERCEL_ENV`, `VERCEL_URL`, …), so
+  `scripts/load-env.ts` skips `VERCEL` and every `VERCEL_*` key except
+  `VERCEL_AUTOMATION_BYPASS_SECRET` and `VERCEL_OIDC_TOKEN`. Otherwise a
+  local process would believe it runs on Vercel.
+- `envPrefix` was removed from `vite.config.ts` in **M0**, not M3. The M0
+  acceptance requires a keyless bundle, but the preview build environment
+  still has `ANTHROPIC_API_KEY`. Until M3 the P0 browser client on previews
+  works only with the Settings key override.
+- CLI 59.16.0 has `vercel curl <path> --deployment <url>` (beta), which
+  adds the protection bypass itself. The M0 spike uses it, so the spike
+  does not depend on `.env.local`. Playwright against a preview still needs
+  `VERCEL_AUTOMATION_BYPASS_SECRET`.
+- `vercel env add NAME preview --yes` on CLI 59.16.0 stored `ALLOW_TEST_MODE`
+  as a **Secret** (sensitive) value by default. That is harmless: sensitive
+  values are still readable at runtime. `INTERNAL_SECRET` is sensitive in
+  `preview` on purpose, and plain in `development`, where sensitive is not
+  allowed.
+- **Spike results** (CLI preview `thai-ler-3xp1pvvv8`, 2026-09-12):
+  1. **Imports: neither `.ts` nor extensionless specifiers work on
+     Vercel.** The first deploy returned 500 `FUNCTION_INVOCATION_FAILED`
+     on every function, with `ERR_MODULE_NOT_FOUND: Cannot find module
+     '/var/task/api/_lib/http.ts' imported from /var/task/api/annotation.js`.
+     `@vercel/node` transpiles each `.ts` file to its own `.js` file and
+     does not bundle or rewrite specifiers. So every relative import in
+     `api/**`, `src/lib/**` and `src/llm/**` now ends in **`.js`**. The
+     sources stay `.ts`, and TypeScript bundler resolution, Vite, Vitest
+     and tsx all map `.js` back to `.ts`. `scripts/import-extensions.test.ts`
+     guards this. §6.2's "`.ts` extensions on every relative import inside
+     `api/`" and the §9 fallback ("`.ts` extensions everywhere") are
+     superseded. The `.ts`-extension `api/health.ts` snippet above is only
+     a shape reference. After the fix, `/api/health` returns 200 with
+     `spike.splitLines: 2`, so the `src/llm/split.ts` chain resolves.
+     JSON imports reached from `api/` at runtime would need `with { type:
+     'json' }`; none exist yet (M1's fake provider must mind this).
+  2. **`getDeadline()`** is `(): Date | undefined` in `@vercel/functions`
+     3.9.7. It is **defined on Vercel** (`spike.hasDeadline: true`) and
+     `undefined` locally, where it never throws. The runner uses
+     `getDeadline()?.getTime() ?? Infinity`, not the `try/catch` in the
+     runner snippet.
+  3. **`api/annotation.ts` and `api/annotation/` coexist**: `GET
+     /api/annotation` and `POST /api/annotation/resume` hit separate
+     functions. §4.1 stands. Unknown `/api/nope` and `/api/_lib/http` are
+     plain 404s, not `index.html`, and `/settings` still gets the SPA
+     rewrite.
+  4. `VERCEL_GIT_COMMIT_SHA` is set even on CLI deploys (the local HEAD),
+     so `health.sha` is meaningful on previews.
+  5. Real Vercel Blob answers `put(…, { ifMatch })` on a **missing** blob
+     with a generic `BlobError` ("The specified key does not exist."), not
+     `BlobPreconditionFailedError`. `api/_lib/store/vercel.ts` maps that
+     case to `StorePreconditionError` as well, and `store.vercel.test.ts`
+     covers it against the real preview store.
 
 ---
 

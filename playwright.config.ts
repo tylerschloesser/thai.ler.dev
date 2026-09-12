@@ -1,32 +1,11 @@
 import { defineConfig, devices } from '@playwright/test'
-import { existsSync, readFileSync } from 'node:fs'
+import { loadEnv } from './scripts/load-env.ts'
 
-// Load .env.local into process.env (if present) so VERCEL_AUTOMATION_BYPASS_SECRET
-// is picked up when running against a remote Vercel preview. No dotenv dependency:
-// this is a tiny inline reader. Never log the values.
-function loadDotEnvLocal(path: string): void {
-  if (!existsSync(path)) return
-  const contents = readFileSync(path, 'utf8')
-  for (const rawLine of contents.split('\n')) {
-    const line = rawLine.trim()
-    if (!line || line.startsWith('#')) continue
-    const eq = line.indexOf('=')
-    if (eq === -1) continue
-    const key = line.slice(0, eq).trim()
-    let value = line.slice(eq + 1).trim()
-    if (
-      (value.startsWith('"') && value.endsWith('"')) ||
-      (value.startsWith("'") && value.endsWith("'"))
-    ) {
-      value = value.slice(1, -1)
-    }
-    if (key && process.env[key] === undefined) {
-      process.env[key] = value
-    }
-  }
-}
-
-loadDotEnvLocal('.env.local')
+// Load .env.local (then .env.development.local, if present) into
+// process.env so VERCEL_AUTOMATION_BYPASS_SECRET is picked up when running
+// against a remote Vercel preview. Shared with scripts/vite-api-plugin.ts;
+// never logs values, never overrides an already-set key.
+loadEnv()
 
 const remote = process.env.PLAYWRIGHT_BASE_URL
 const baseURL = remote ?? 'http://localhost:4173'
@@ -37,6 +16,11 @@ export default defineConfig({
   // extension. Pin it to *.spec.ts so the two runners cannot fight over a
   // file (e.g. a vitest test living next to the mock it exercises).
   testMatch: '**/*.spec.ts',
+  // e2e/live/**/*.spec.ts specs are tagged @live (PLAN.MD §4.8) and only
+  // run against a real Vercel preview via scripts/e2e-vercel.sh
+  // (PLAYWRIGHT_BASE_URL set). Exclude them from the local fast suite so
+  // `pnpm test:e2e` never tries to hit a preview deployment.
+  grepInvert: remote ? undefined : /@live/,
   fullyParallel: true,
   retries: remote ? 1 : 0,
   reporter: 'list',
@@ -66,5 +50,11 @@ export default defineConfig({
         url: baseURL,
         reuseExistingServer: true,
         timeout: 60_000,
+        env: {
+          BLOB_BACKEND: 'memory',
+          MODEL_PROVIDER: 'fake',
+          ALLOW_TEST_MODE: '1',
+          STEP_BUDGET_MS: '250000',
+        },
       },
 })

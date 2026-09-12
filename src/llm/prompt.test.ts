@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
-import { buildUserMessage, PROMPT_VERSION, SYSTEM_PROMPT } from './prompt'
-import type { SplitLine } from './split'
+import { buildUserMessage, PROMPT_VERSION, SYSTEM_PROMPT } from './prompt.js'
+import type { SplitLine } from './split.js'
 
 const LINES: SplitLine[] = [
   { speaker: 'A', text: 'สวัสดีครับ' },

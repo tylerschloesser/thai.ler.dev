@@ -11,13 +11,18 @@
       "Bash(git push*)",
       "Bash(vercel *)",
       "Bash(vc *)",
+      "Bash(openssl rand *)",
+      "Bash(curl *)",
+      "Bash(tsx *)",
       "WebFetch",
       "WebSearch"
     ],
     "deny": [
       "Read(./.env.local)",
+      "Read(./.env.development.local)",
       "Bash(vercel --prod*)",
-      "Bash(vercel deploy --prod*)"
+      "Bash(vercel deploy --prod*)",
+      "Bash(vercel env pull .env.local*)"
     ]
   }
 }

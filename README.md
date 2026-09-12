@@ -3,10 +3,12 @@
 A personal Thai-learning web app: paste a dialogue, run it through Claude,
 and get a layered annotation — dialogue → line → sentence → word →
 syllable — with romanization, gloss, tone, and learner notes. Everything is
-stored client-side in IndexedDB (via Dexie); there is no backend. The
-Anthropic API call is made directly from the browser, which is why this
-project is only ever deployed to a Vercel **preview** URL (see
-[Deploying](#deploying) and [Security](#security-the-api-key-ships-in-the-client)
+stored client-side in IndexedDB (via Dexie). P1 (see `PLAN.MD`) is moving the
+Anthropic call into `api/` Vercel Functions and the records into Vercel Blob;
+as of P1 M0 `api/` serves a health endpoint and a Blob-store abstraction,
+while annotation still calls Anthropic directly from the browser — which is
+why this project is only ever deployed to a Vercel **preview** URL (see
+[Deploying](#deploying) and [Security](#security-the-api-key-and-the-browser)
 below).
 
 Stack: Vite + React 19 + TypeScript, Base UI + CSS Modules + Radix Colors,
@@ -23,14 +25,10 @@ pnpm preview   # serve the production build
 `node_modules` must already be installed (`pnpm install`); this repo pins
 exact dependency versions in `pnpm-lock.yaml`.
 
-To actually run the annotation pipeline locally, export an API key before
-starting the dev server, or paste one into Settings → API key override
-(stored in this browser's IndexedDB only):
-
-```sh
-export ANTHROPIC_API_KEY=sk-ant-...
-pnpm dev
-```
+To actually run the annotation pipeline locally, paste a key into Settings →
+API key override (stored in this browser's IndexedDB only). Since P1 M0 a
+shell `ANTHROPIC_API_KEY` is no longer inlined into the client; `pnpm dev`
+and `pnpm preview` also serve `/api/*` (`scripts/vite-api-plugin.ts`).
 
 ## Testing
 
@@ -38,15 +36,15 @@ pnpm dev
 pnpm check          # lint + typecheck + format:check (run before every commit)
 pnpm test           # Vitest unit tests
 pnpm test:e2e       # Playwright against a local `vite preview` (mocked Anthropic API)
-pnpm test:e2e:vercel  # deploy a fresh preview and run the same suite against it
+pnpm test:e2e:vercel  # deploy a fresh CLI preview and run only the @live specs
 ```
 
 `pnpm test` and `pnpm test:e2e` never call the real Anthropic API —
 `e2e/fixtures.ts` routes every `api.anthropic.com` request through a
 fixture-backed SSE mock by default, and fails any test that lets a request
-fall through to the real endpoint. `pnpm test:e2e:vercel` runs against a
-real deployment (see below) but still uses the same mock; it costs no
-Anthropic usage, only Vercel deploy time. See `.claude/rules/testing.md`
+fall through to the real endpoint. `pnpm test:e2e:vercel` runs the `@live`
+specs (`e2e/live/`) against a real preview deployment; it costs no
+Anthropic usage, only Vercel deploy time and a few Blob operations. See `.claude/rules/testing.md`
 for the mock contract and seeding conventions.
 
 ## Deploying
@@ -61,21 +59,22 @@ pnpm deploy:preview   # `vercel deploy --yes` — preview only, always
 ```
 
 **`vercel --prod` / `vercel deploy --prod` must never be run.** See
-[Security](#security-the-api-key-ships-in-the-client) for why.
+[Security](#security-the-api-key-and-the-browser) for why.
 
 ### Environment variables
 
 | Variable                          | Where it lives                         | Notes                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
 | --------------------------------- | -------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`               | Vercel project → `preview` environment | Set it via `printf '%s' "$ANTHROPIC_API_KEY" \| vercel env add ANTHROPIC_API_KEY preview`. It must be added as a **non-sensitive** variable. Vercel's "sensitive" env vars are runtime-only (readable only by the server at request time), but this is a static Vite app: `ANTHROPIC_API_KEY` is inlined into the client bundle at _build_ time via `envPrefix`, so it must be readable during the build step. A sensitive var would build successfully but silently bake in an empty string.                                                                                                                                                   |
+| `ANTHROPIC_API_KEY`               | Vercel project → `preview` environment | Since P1 M0 the key is **no longer inlined into the client bundle** (`vite.config.ts` has no `envPrefix`); it is read at runtime by the `api/` functions (from P1 M1), so it becomes a **sensitive** (runtime-only) variable: `printf '%s' "$ANTHROPIC_API_KEY" \| vercel env add ANTHROPIC_API_KEY preview --sensitive --force`. Until M3 the browser client works only with a key entered in Settings.                                                                                                                                                                                                                                        |
 | `VERCEL_AUTOMATION_BYPASS_SECRET` | Local `.env.local` (gitignored)        | Lets Playwright and `scripts/e2e-vercel.sh` get past Vercel's SSO deployment protection on preview URLs, via an `x-vercel-protection-bypass` header. **Do not** run `vercel env pull .env.local` to get this — that command only pulls system/git-scoped env vars and omits the bypass secret entirely, so it would silently overwrite `.env.local` and delete the secret. Verify it against the live project instead with `vercel api "/v9/projects/<id>?teamId=<team>"` and compare the `protectionBypass` value. If it's ever missing, regenerate it in the dashboard (Settings → Deployment Protection → Protection Bypass for Automation). |
 
-## Security: the API key ships in the client
+## Security: the API key and the browser
 
-This is a P0/personal-project tradeoff, not an oversight: `ANTHROPIC_API_KEY`
-is inlined into the JavaScript bundle at build time so the browser can call
-`api.anthropic.com` directly with no backend. Anyone who can load the page
-can read the key out of the bundle.
+In P0, `ANTHROPIC_API_KEY` was inlined into the JavaScript bundle at build
+time so the browser could call `api.anthropic.com` directly with no backend.
+Since P1 M0 the bundle no longer contains it (`vite.config.ts` has no
+`envPrefix`), but until P1 M3 the browser still calls Anthropic directly with
+a key entered in Settings — so the page must stay private.
 
 That's tolerable _only_ because:
 
@@ -101,7 +100,8 @@ client entirely) is a known follow-up, not yet built — it is the subject of
 - `src/features/` — page-level feature components (dialogues, annotate, settings)
 - `src/fixtures/` — the committed sample annotation used by the e2e mock and dev "Load sample" button
 - `e2e/` — Playwright specs, fixtures, and the Anthropic SSE mock
-- `scripts/` — `gen-fixture.ts` (regenerates the fixture with a real key) and `e2e-vercel.sh`
+- `api/` — Vercel Functions (`_lib/` is not routed); see `.claude/rules/api.md`
+- `scripts/` — `gen-fixture.ts` (regenerates the fixture with a real key), `e2e-vercel.sh`, `load-env.ts`, `vite-api-plugin.ts`
 
 See `CLAUDE.md` and `.claude/rules/*.md` for the rules an editing agent
 follows in each of these areas, `PLAN.MD` for the current plan, and

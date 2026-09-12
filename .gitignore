@@ -32,3 +32,6 @@ coverage
 
 # Agent worktrees
 .claude/worktrees/
+
+# Local disk BlobStore backend (BLOB_BACKEND=disk, api/_lib/store/disk.ts)
+.data/

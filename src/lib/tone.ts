@@ -1,4 +1,4 @@
-import type { Tone } from '../llm/schema'
+import type { Tone } from '../llm/schema.js'
 
 /**
  * The same Thai tone-rule table the LLM system prompt is built from (see

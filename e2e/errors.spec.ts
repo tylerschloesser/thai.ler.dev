@@ -30,7 +30,15 @@ function makeSnapshot(dialogueId: string): Snapshot {
     deviceId: 'e2e-errors-spec',
     dialogues: [dialogue],
     annotations: [],
-    settings: [],
+    // A dummy (non-`sk-ant-`) API-key override: without it,
+    // src/llm/client.ts throws MissingApiKeyError before ever reaching
+    // the network (this environment has no build-time ANTHROPIC_API_KEY),
+    // and the mocked 429/500 below would never even be requested. The
+    // value never leaves the browser - every /v1/messages request is
+    // intercepted by mockAnthropicError/the default mock regardless.
+    settings: [
+      { key: 'apiKeyOverride', value: 'e2e-dummy-key', updatedAt: now },
+    ],
   }
 }
 

@@ -1,6 +1,9 @@
 import { test as base, expect } from '@playwright/test'
 import type { Page, Route } from '@playwright/test'
 import { anthropicMockRoute } from './mocks/anthropic'
+import { DB_SCHEMA_VERSION } from '../src/db/db'
+import { SNAPSHOT_FORMAT } from '../src/db/snapshot'
+import type { Snapshot } from '../src/db/snapshot'
 
 interface AnthropicErrorOverride {
   status: number
@@ -96,6 +99,21 @@ interface Fixtures {
    *   // (a later call, or none, reverts to the default mock)
    */
   mockAnthropicError: (options: MockAnthropicErrorOptions) => Promise<void>
+
+  /**
+   * Seeds a dummy Settings API-key override (`apiKeyOverride`, a plain
+   * non-`sk-ant-` string) via `seed`, so the P0 browser-side Anthropic
+   * client (`src/llm/client.ts`) has *a* key to construct itself with -
+   * without it, `createAnthropicClient` throws `MissingApiKeyError` before
+   * ever reaching the network, since this environment has no build-time
+   * `ANTHROPIC_API_KEY`. The dummy value never leaves the browser: every
+   * request to `https://api.anthropic.com/v1/messages` is intercepted by
+   * the mock installed above regardless of which key the SDK signed the
+   * request with. Call it after `page.goto` (like `seed`) and before
+   * triggering an annotation. Removed in M3 along with the client-side key
+   * path (the backend will hold the real key instead).
+   */
+  seedApiKey: () => Promise<void>
 }
 
 // Note: Playwright's fixture callback is conventionally named `use`, but that
@@ -133,6 +151,24 @@ export const test = base.extend<Fixtures>({
         body: options.body ?? defaultErrorBody(options.status),
         remaining: options.times ?? Infinity,
       })
+    })
+  },
+
+  seedApiKey: async ({ seed }, provide) => {
+    await provide(async () => {
+      const now = new Date().toISOString()
+      const snapshot: Snapshot = {
+        format: SNAPSHOT_FORMAT,
+        schemaVersion: DB_SCHEMA_VERSION,
+        exportedAt: now,
+        deviceId: 'e2e-fixtures-seed-api-key',
+        dialogues: [],
+        annotations: [],
+        settings: [
+          { key: 'apiKeyOverride', value: 'e2e-dummy-key', updatedAt: now },
+        ],
+      }
+      await seed(snapshot)
     })
   },
 })

@@ -3,7 +3,7 @@ import {
   checkInvariants,
   LineAnnotationSchema,
   type LineAnnotation,
-} from './schema'
+} from './schema.js'
 
 function makeValidLine(): LineAnnotation {
   return {

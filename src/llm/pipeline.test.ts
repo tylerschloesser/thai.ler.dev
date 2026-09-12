@@ -1,12 +1,12 @@
 import Anthropic from '@anthropic-ai/sdk'
 import { describe, expect, it } from 'vitest'
-import { sseFromText } from '../../e2e/mocks/anthropic'
+import { sseFromText } from '../../e2e/mocks/anthropic.js'
 import {
   annotateDialogue,
   resumeAnnotation,
   type PipelineRepo,
-} from './pipeline'
-import type { LineAnnotation } from './schema'
+} from './pipeline.js'
+import type { LineAnnotation } from './schema.js'
 
 const DIALOGUE = 'A: หนึ่ง\nB: สอง\nA: สาม'
 

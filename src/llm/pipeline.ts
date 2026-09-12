@@ -1,8 +1,8 @@
 import type Anthropic from '@anthropic-ai/sdk'
-import { AnnotateError, annotateLine } from './annotateLine'
-import { PROMPT_VERSION } from './prompt'
-import { SCHEMA_VERSION, type LineAnnotation } from './schema'
-import { splitDialogue, type SplitLine } from './split'
+import { AnnotateError, annotateLine } from './annotateLine.js'
+import { PROMPT_VERSION } from './prompt.js'
+import { SCHEMA_VERSION, type LineAnnotation } from './schema.js'
+import { splitDialogue, type SplitLine } from './split.js'
 
 const DEFAULT_CONCURRENCY = 4
 

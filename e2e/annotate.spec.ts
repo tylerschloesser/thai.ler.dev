@@ -3,8 +3,10 @@ import { expect, test } from './fixtures'
 test.describe('annotate', () => {
   test('paste the sample dialogue, click Annotate, and land on the rendered dialogue', async ({
     page,
+    seedApiKey,
   }) => {
     await page.goto('/')
+    await seedApiKey()
 
     await page.getByRole('button', { name: 'Load sample' }).click()
     await page.getByRole('button', { name: 'Annotate' }).click()
