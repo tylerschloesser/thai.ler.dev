@@ -6,17 +6,21 @@ paths:
 
 # Data layer rules
 
-Data layer lives at `src/db/` (planned for M2: `db.ts`, `repo.ts`,
-`snapshot.ts`, `settings.ts`, `meta.ts`) plus pure helpers in `src/lib/`.
+Data layer lives at `src/db/` (`db.ts`, `repo.ts`, `snapshot.ts`,
+`settings.ts`, `meta.ts`) plus pure helpers in `src/lib/`.
 
 ## Repo-only writes
 
 `src/db/repo.ts` is the **only** write path to Dexie tables. Components and
 hooks call repo functions (`createDialogue`, `renameDialogue`,
 `softDeleteDialogue`, `listDialogues` (live), `getDialogue`,
-`getAnnotation`, `upsertAnnotationLine`, `finalizeAnnotation`,
+`getAnnotation`, `getAnnotationsByIds` (batched, for list rendering),
+`createAnnotation`, `upsertAnnotationLine`, `finalizeAnnotation`,
 `setCurrentAnnotation`) — never `db.table.put/add/delete` directly outside
-`repo.ts`. Every write bumps `updatedAt`.
+`repo.ts`. Every write bumps `updatedAt`. Settings (`src/db/settings.ts`)
+are the one exception: single-key rows with defaults, not soft-deletable
+records, so they own their own `getSetting`/`setSetting`/`useSetting` API
+instead of living in `repo.ts`.
 
 ## Schema (Dexie, `src/db/db.ts`)
 
@@ -47,7 +51,12 @@ interface AnnotationRecord extends Base {
 
 Tables: `dialogues: id, updatedAt, deletedAt`, `annotations: id, dialogueId,
 updatedAt`, `settings: key`, `meta: key`. Annotations are a separate table
-from dialogues so the library list never loads large JSON blobs.
+from dialogues so that reading a `Dialogue` for the title/sourceText/list
+view never touches the `lines` blob. The library's per-row status chip is
+the one place that still needs an `AnnotationRecord` (for `status`/
+`lineErrors`) — IndexedDB always deserializes a full record, so that read
+can't avoid the blob, but `DialogueList.tsx` pays that cost once via a
+single batched `getAnnotationsByIds`, not once per row.
 
 ## Migration rule
 
@@ -57,11 +66,15 @@ callback — never mutate an existing versioned schema in place. Bump
 
 ## Sync-readiness invariants
 
-Every record: `id` is `crypto.randomUUID()`; timestamps are ISO-8601
-strings; deletes are soft (`deletedAt`), queries filter `deletedAt ===
-null`; every write sets `updatedAt`; records are tagged with `deviceId`
-(from `meta`) for future multi-device sync. Hard-purge tombstones older
-than 90 days on startup.
+Every record: `id` is a UUID (`src/lib/ids.ts`'s `newId`, currently
+`crypto.randomUUID()`); timestamps are ISO-8601 strings; deletes are soft
+(`deletedAt`), queries filter `deletedAt === null`; every write sets
+`updatedAt`. `deviceId` is **not** stamped on individual records — it's a
+single value in the `meta` table (`getDeviceId()`, `src/db/meta.ts`),
+included once per `Snapshot` (see below) for future multi-device sync, not
+per-row. Hard-purge tombstones older than 90 days on startup
+(`purgeTombstones` in `db.ts`, called fire-and-forget from
+`src/app/debug.ts`).
 
 ## Snapshot format (`src/db/snapshot.ts`)
 

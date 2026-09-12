@@ -8,8 +8,9 @@ paths:
 
 # Testing rules
 
-`e2e/` (Playwright) and `playwright.config.ts`/`vitest.config.ts` will be
-added in M0; specs and mocks fill in across M0–M4 per PLAN.MD §4.6.
+`e2e/` (Playwright specs, `fixtures.ts`, `mocks/anthropic.ts`) plus
+`playwright.config.ts`/`vitest.config.ts` at the repo root. 19 Playwright
+specs and 70 Vitest tests exist today; see PLAN.MD §4.6 for the spec list.
 
 ## Mock contract
 
@@ -35,8 +36,8 @@ so this hook must keep working as the app evolves.
 
 Full Playwright suite must stay under 60s wall-clock: `fullyParallel: true`,
 Chromium only, one shared `webServer` (`vite preview` on 4173 unless
-`PLAYWRIGHT_BASE_URL` is set), no `waitForTimeout` polling loops. Measure
-suite time in M4 and shard if it creeps up.
+`PLAYWRIGHT_BASE_URL` is set), no `waitForTimeout` polling loops. Currently
+~7s locally for 19 specs; shard if it creeps up as specs are added.
 
 ## Never `waitForFunction` with an async predicate
 

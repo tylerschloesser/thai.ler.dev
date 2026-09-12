@@ -7,9 +7,8 @@ paths:
 
 # LLM pipeline rules
 
-Planned layout (M3): `src/llm/{client,schema,prompt,split,annotateLine,
-pipeline}.ts`, fixtures in `src/fixtures/`, one-off generator at
-`scripts/gen-fixture.ts`.
+Layout: `src/llm/{client,schema,prompt,split,annotateLine,pipeline}.ts`,
+fixtures in `src/fixtures/`, one-off generator at `scripts/gen-fixture.ts`.
 
 ## Models and client
 
@@ -34,9 +33,21 @@ Every property `required`; `additionalProperties: false`; no recursion;
 `minItems` only 0 or 1; no numeric or string-length constraints (the SDK
 strips these into descriptions instead of enforcing them); use
 `.nullable()`, not `.optional()`. Fixed 4-level nesting (line → sentence →
-word → syllable) is fine. Call shape uses
-`zodOutputFormat(LineAnnotationSchema)` from
-`@anthropic-ai/sdk/helpers/zod` as `output_config.format`.
+word → syllable) is fine.
+
+`annotateLine.ts` builds `output_config.format` from
+`zodOutputFormat(LineAnnotationSchema)` (`@anthropic-ai/sdk/helpers/zod`)
+but deliberately **strips its `.parse` method**, keeping only the wire
+shape (`type`, `schema`). `zodOutputFormat`'s `.parse` is what the SDK uses
+to auto-populate `parsed_output`, and it runs eagerly while the stream
+accumulates — before `stream.finalMessage()` resolves — so it throws on a
+real refusal or a `max_tokens` truncation (where the text is empty or cut
+off) before `annotateLine.ts` gets a chance to inspect `stop_reason` and
+report a proper `'refusal'` / `'max_tokens'` `AnnotateError`. Stripping
+`.parse` disables that auto-parse so `finalMessage()` always resolves;
+`annotateLine.ts` then checks `stop_reason` first, and only afterward
+`JSON.parse`s the text block and validates it against the zod schema
+itself.
 
 ## Prompt-caching layout
 
@@ -53,8 +64,8 @@ Calls run per-line, concurrency-limited (4), not one call per dialogue.
 
 ## `PROMPT_VERSION`
 
-Bump `PROMPT_VERSION` in `prompt.ts` whenever `SYSTEM_PROMPT` or the zod
-schema shape changes, and re-run `pnpm gen:fixture` to regenerate
+Currently `2` (`src/llm/prompt.ts`). Bump it whenever `SYSTEM_PROMPT` or
+the zod schema shape changes, and re-run `pnpm gen:fixture` to regenerate
 `src/fixtures/sample.annotation.json` before committing. Stored on every
 `AnnotationRecord` alongside `schemaVersion`.
 

@@ -50,9 +50,13 @@ Automation) rather than trying to recreate it from the CLI.
 
 ## Getting a preview URL
 
-`vercel deploy --yes` prints the deployment URL directly (also what
-`pnpm deploy:preview` and `scripts/e2e-vercel.sh` capture into `$url`).
-Report that URL back after any deploy-verification step.
+CLI 56.4.1 does not print a bare URL to a pipe — when stdout isn't a TTY,
+`vercel deploy --yes` prints a JSON envelope containing a `"url"` field
+instead. `scripts/e2e-vercel.sh` parses that JSON out of stdout (with a
+regex fallback for a bare `https://*.vercel.app` URL, in case a future CLI
+version changes back). Don't assume a plain URL comes back from piping or
+capturing `vercel deploy` output — check the actual stdout shape first.
+Report the resolved URL back after any deploy-verification step.
 
 ## Per-milestone flow
 

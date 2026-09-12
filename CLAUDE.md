@@ -25,11 +25,11 @@ Vitest + Playwright, deployed via the Vercel CLI (preview only).
 ## Layout
 
 - `.claude/` — context engineering: rules, agents, permissions
-- `e2e/` — Playwright specs + fixtures; Anthropic SSE mock lands in M3
-- `scripts/` — `e2e-vercel.sh`; `gen-fixture.ts` lands in M3
-- `src/` — `app/` (router, providers), `routes/` (file-based), `lib/`;
-  `styles/` + `ui/` (M1), `db/` (M2), `llm/` + `fixtures/` (M3),
-  `features/` (M4) — see PLAN.MD §3
+- `e2e/` — Playwright specs, fixtures, and the Anthropic SSE mock
+- `scripts/` — `e2e-vercel.sh`, `gen-fixture.ts`
+- `src/` — `app/` (router, providers, theme, debug hook), `routes/`
+  (file-based), `lib/`, `styles/` + `ui/`, `db/`, `llm/` + `fixtures/`,
+  `features/` — see PLAN.MD §3
 - `public/` — static assets (favicon)
 
 ## Hard rules
