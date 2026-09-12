@@ -247,6 +247,7 @@ entirely:
 | `thai_model`          | `fake` \| `fake-slow`                     | Provider override (fake-slow = 300 ms per line). Stored on `run.provider` so hops keep it. |
 | `thai_fake_error`     | an `AnnotateErrorKind`, e.g. `rate_limited` | Fake provider fails every line with that kind while set. Replaces P0's `mockAnthropicError`. |
 | `thai_step_budget_ms` | integer                                   | Caps the runner's per-step budget (forces hops in tests).                                  |
+| `thai_fake_delay_ms`  | integer 0–60 000                          | Overrides the fake provider's per-line delay (added in M1, see §10 "Corrected during M1/M2"). |
 
 ### 4.2 Job execution
 
@@ -701,7 +702,7 @@ iad1 --environment preview --environment development`.
 Acceptance: local suite green; `pnpm test:e2e:vercel` green (health on a
 real preview with `blobBackend: 'vercel'`); bundle check shows no key.
 
-### M1 — Server core `[ ]` (parallel-safe: `api/**`, `src/llm/provider.ts`, `src/llm/annotateLine.ts`, `src/lib/{records,merge}.ts`, `scripts/gen-fixture.ts`)
+### M1 — Server core `[~]` (parallel-safe: `api/**`, `src/llm/provider.ts`, `src/llm/annotateLine.ts`, `src/lib/{records,merge}.ts`, `scripts/gen-fixture.ts`)
 
 1. `src/lib/records.ts` (types), `src/lib/merge.ts` (`pickWinner`, moved
    from `snapshot.ts` with its tests), `src/llm/provider.ts`,
@@ -724,7 +725,7 @@ Acceptance: `pnpm test` green; a Node smoke (`pnpm exec tsx
 scripts/smoke-runner.ts`, memory store, fake-slow, `STEP_BUDGET_MS=2000`,
 local hop to a `vite preview`) completes an 8-line job in ≥ 2 steps.
 
-### M2 — Data layer v2 and sync client `[ ]` (parallel-safe with M1: `src/db/**`, `src/sync/**`, `src/app/debug.ts`)
+### M2 — Data layer v2 and sync client `[~]` (parallel-safe with M1: `src/db/**`, `src/sync/**`, `src/app/debug.ts`)
 
 1. Dexie v2 + upgrade + tests (existing rows get `run`; `outbox`).
 2. `repo.ts`: outbox enqueue in every write, `mergeRemote*`,
@@ -1320,6 +1321,55 @@ export async function pull(): Promise<PullCounts> {
      `BlobPreconditionFailedError`. `api/_lib/store/vercel.ts` maps that
      case to `StorePreconditionError` as well, and `store.vercel.test.ts`
      covers it against the real preview store.
+
+**Corrected during M1/M2** (decided when writing the briefs, 2026-09-12):
+
+- **Shared contract first.** `src/lib/records.ts` and `src/lib/merge.ts`
+  (which gains `mergeSettingRows` and `settingsUpdatedAt`, the per-key LWW
+  rule of the old `mergeSettings`) were committed before the M1/M2
+  worktrees branched (`ac25fa8`). Both sides import them rather than each
+  creating them. The settings record is `SettingRow[]` with no tombstones.
+  Its manifest `updatedAt` is its newest row's.
+- **Runner timing.** A fixed `LINE_RESERVE_MS = 70 000` would never start a
+  line under a test budget of a few seconds. So `lineReserveMs =
+  min(70 000, floor(budget / 2))`, and every step starts **at least one**
+  pending line, which guarantees progress. At the plan's `fake-slow` 300 ms
+  per line and 6-wide fan-out, an 8-line job finishes in under a second.
+  That makes `job-hop` and `job-cancel` unobservable, so test mode gains a
+  cookie `thai_fake_delay_ms` (0–60 000, forwarded on hops) that overrides
+  the fake provider's per-line delay. The fake provider also synthesizes a
+  minimal schema-valid annotation for text that is not in the fixture, so
+  e2e can use dialogues of any length.
+- **Cancellation across instances.** `cancel` may land on a different
+  instance than the runner. The runner therefore re-reads the stored
+  `run.state` before starting a line (at most every 5 s), at every flush and
+  before its final write, and never overwrites `cancelled`.
+- **Fewer manifest writes.** `putRecords([...], { manifest: true })` writes
+  the blobs, then **one** manifest update covering all entries. So `POST
+  /api/annotate` costs 3 advanced ops, not 4. An LWW upsert whose stored
+  copy wins skips the put.
+- **`createAnnotation` / `upsertAnnotationLine` / `finalizeAnnotation`**
+  stay in `repo.ts`, deprecated, until **M3**: the browser pipeline uses
+  them until M3 moves annotation to the server. §4.4's "deleted in M2" moves
+  to M3.
+- **Parallel Playwright.** Both worktrees would otherwise start `vite
+  preview` on 4173 and, via `reuseExistingServer`, silently test each
+  other's build. `playwright.config.ts` honours `E2E_PORT`, and M1 uses
+  4174.
+- **Agent worktrees branch from `origin/vercel`, not the local `HEAD`.**
+  M0 was committed but not yet pushed (its gate waits on the bypass
+  secret), so both worktrees started at `fb8a290`. The §7.1 pre-flight
+  check caught it in both agents. Their trees were clean, and each was
+  reset to `ac25fa8` before any edit. The pre-flight must therefore check
+  for the expected commit, not just `--is-ancestor origin/vercel`, which
+  passed here.
+- **New env var `BLOB_DISK_ROOT`** (M1; used locally only). It overrides
+  the disk backend's root (default `.data/blob/`) so
+  `scripts/smoke-runner.ts` can use a throwaway directory. The smoke run
+  also needs `pnpm preview` started as a detached process group: a plain
+  `kill()` left an orphaned vite server behind.
+- `POST /api/annotation/resume` decides "busy" from the lease alone. A live
+  lease means a runner holds the record, whatever `run.state` says.
 
 ---
 
