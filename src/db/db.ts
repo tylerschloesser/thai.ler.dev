@@ -1,143 +1,68 @@
 import Dexie from 'dexie'
 import type { EntityTable } from 'dexie'
 import { newId } from '../lib/ids'
+import { LEGACY_RUN } from '../lib/records'
+import type {
+  AnnotationRecord,
+  AnnotationRun,
+  AnnotationStatus,
+  AnnotationUsage,
+  Base,
+  Dialogue,
+  RecordKind,
+  RunProvider,
+  RunState,
+  SettingRow,
+} from '../lib/records'
+import { RUN_PROVIDERS, RUN_STATES } from '../lib/records'
+import type { LineAnnotation } from '../llm/schema'
 
-// --- Sync-readiness base shape (docs/plans/P0.md §4.1) --------------------------
-
-export interface Base {
-  id: string
-  createdAt: string
-  updatedAt: string
-  // Soft-delete tombstone. `null` means "alive". IndexedDB cannot use `null`
-  // as an index key, so Dexie's `deletedAt` index below silently omits every
-  // live row and only ever contains tombstoned rows (their `deletedAt` is a
-  // real ISO string). Two consequences, both intentional:
-  //   1. "list only live rows" cannot be expressed as `where('deletedAt')
-  //      .equals(null)` — it never finds anything. We filter `deletedAt ===
-  //      null` in JS instead (see repo.ts `listDialoguesAsync`), which is
-  //      fine at this app's scale (a personal library, not a shared table).
-  //   2. The index is still exactly what tombstone purging wants: every
-  //      entry in it *is* a tombstone, so `purgeTombstones` below can do an
-  //      efficient `where('deletedAt').below(cutoff)` range scan.
-  deletedAt: string | null
+// --- Shared record contract (PLAN.MD §4.4) ---------------------------------
+//
+// `Base`, `Dialogue`, `AnnotationRecord` (incl. `AnnotationRun`),
+// `SettingRow` and friends now live in `src/lib/records.ts` — the shared
+// contract between M1 (`api/**`) and M2 (`src/db/**`), which never imports
+// Dexie. Re-exported here so every existing `from '../db/db'` /
+// `from './db'` import keeps working unchanged.
+export type {
+  AnnotationRecord,
+  AnnotationRun,
+  AnnotationStatus,
+  AnnotationUsage,
+  Base,
+  Dialogue,
+  RecordKind,
+  RunProvider,
+  RunState,
+  SettingRow,
 }
+export { LEGACY_RUN, RUN_PROVIDERS, RUN_STATES }
 
-export interface Dialogue extends Base {
-  title: string // derived from first line, user-editable
-  sourceText: string // exactly what was pasted
-  currentAnnotationId: string | null
-}
+// `LineAnnotation` (and its nested `Sentence`/`Word`/`Syllable`/`Note`
+// shapes) is `src/llm/schema.ts`'s zod-inferred type — the single canonical
+// definition, no longer duplicated here as a hand-kept structural mirror.
+export type { LineAnnotation }
 
-// --- Annotation line shape ----------------------------------------------
-// Placeholder mirror of M3's `LineAnnotationSchema` (src/llm/schema.ts,
-// zod, docs/plans/P0.md §4.2). src/db must not depend on src/llm, so these are
-// plain structural interfaces kept in sync by hand; M3 should either keep
-// these in step with its zod schema or replace them with `z.infer<...>`
-// re-exports once it lands.
-export type ToneName = 'mid' | 'low' | 'falling' | 'high' | 'rising'
-
-export type NoteKind =
-  | 'common_phrase'
-  | 'pronunciation'
-  | 'spelling_mismatch'
-  | 'particle'
-  | 'register'
-  | 'classifier'
-  | 'loanword'
-  | 'compound'
-  | 'idiom'
-  | 'colloquial'
-  | 'no_equivalent'
-  | 'grammar'
-  | 'culture'
-  | 'other'
-
-export type PartOfSpeech =
-  | 'noun'
-  | 'verb'
-  | 'adjective'
-  | 'adverb'
-  | 'pronoun'
-  | 'particle'
-  | 'classifier'
-  | 'preposition'
-  | 'conjunction'
-  | 'question_word'
-  | 'number'
-  | 'name'
-  | 'interjection'
-  | 'other'
-
-export interface Note {
-  kind: NoteKind
-  text: string
-}
-
-export interface Syllable {
-  thai: string
-  romanization: string
-  tone: ToneName
-  toneExplanation: string | null
-  meaning: string | null
-}
-
-export interface Word {
-  thai: string
-  romanization: string
-  gloss: string
-  partOfSpeech: PartOfSpeech
-  syllables: Syllable[]
-  notes: Note[]
-}
-
-export interface Sentence {
-  thai: string
-  romanization: string
-  translation: string
-  literal: string | null
-  words: Word[]
-  notes: Note[]
-}
-
-export interface LineAnnotation {
-  speaker: string | null
-  thai: string
-  translation: string
-  sentences: Sentence[]
-  notes: Note[]
-}
-
-export type AnnotationStatus = 'partial' | 'complete'
-
-export interface AnnotationUsage {
-  inputTokens: number
-  outputTokens: number
-  cacheReadTokens: number
-}
-
-export interface AnnotationRecord extends Base {
-  dialogueId: string
-  model: string // e.g. 'claude-opus-5'
-  promptVersion: number // PROMPT_VERSION at time of run
-  schemaVersion: number // ANNOTATION_SCHEMA_VERSION at time of run
-  lines: Array<LineAnnotation | null> // index-aligned with split(sourceText)
-  lineErrors: Array<string | null>
-  status: AnnotationStatus
-  usage: AnnotationUsage
-  durationMs: number
-}
-
-export interface SettingRow {
-  key: string
-  value: unknown
-  updatedAt: string
-}
-
-export type MetaKey = 'deviceId' | 'schemaVersion'
+export type MetaKey =
+  'deviceId' | 'schemaVersion' | 'lastPullAt' | 'syncInitialized'
 
 export interface MetaRow {
   key: MetaKey
   value: string
+}
+
+/**
+ * One row per record queued for the next `push()` (`src/sync/push.ts`).
+ * Keyed by `key` (`` `${kind}:${id}` ``, e.g. `dialogue:<id>` or
+ * `settings:all` — see `manifestKey` in `src/lib/records.ts`, the same
+ * format as a manifest entry key) so repeated writes to the same record
+ * before it's drained coalesce into one row via `put`.
+ */
+export interface OutboxRow {
+  key: string
+  kind: RecordKind
+  id: string
+  updatedAt: string
 }
 
 /** Bump whenever the shape of `LineAnnotation` (and friends) changes. */
@@ -149,7 +74,7 @@ export const ANNOTATION_SCHEMA_VERSION = 1
  * change. Never mutate an existing versioned `.stores()` block in place
  * (see `.claude/rules/data.md`). Keep `meta.schemaVersion` in step with it.
  */
-export const DB_SCHEMA_VERSION = 1
+export const DB_SCHEMA_VERSION = 2
 
 const TOMBSTONE_TTL_MS = 90 * 24 * 60 * 60 * 1000
 
@@ -158,15 +83,35 @@ export class ThaiLerDb extends Dexie {
   annotations!: EntityTable<AnnotationRecord, 'id'>
   settings!: EntityTable<SettingRow, 'key'>
   meta!: EntityTable<MetaRow, 'key'>
+  outbox!: EntityTable<OutboxRow, 'key'>
 
   constructor() {
     super('thai.ler.dev')
-    this.version(DB_SCHEMA_VERSION).stores({
+    this.version(1).stores({
       dialogues: 'id, updatedAt, deletedAt',
       annotations: 'id, dialogueId, updatedAt',
       settings: 'key',
       meta: 'key',
     })
+    // v2 (PLAN.MD §4.4/§10): every pre-M1 annotation gets a `run` (it was
+    // always a synchronous, already-finished browser run — `LEGACY_RUN`),
+    // and a new `outbox` table backs the client sync push queue.
+    this.version(DB_SCHEMA_VERSION)
+      .stores({
+        dialogues: 'id, updatedAt, deletedAt',
+        annotations: 'id, dialogueId, updatedAt',
+        settings: 'key',
+        meta: 'key',
+        outbox: 'key, updatedAt',
+      })
+      .upgrade((tx) =>
+        tx
+          .table('annotations')
+          .toCollection()
+          .modify((row: { run?: AnnotationRun }) => {
+            row.run ??= { ...LEGACY_RUN }
+          }),
+      )
     // Fires exactly once, the first time this database is created on a
     // device, so this is where a fresh `deviceId` is minted and stays
     // stable thereafter (sync-readiness: docs/plans/P0.md §4.5).
@@ -192,9 +137,9 @@ export const db = new ThaiLerDb()
 export async function purgeTombstones(now: Date = new Date()): Promise<number> {
   const cutoff = new Date(now.getTime() - TOMBSTONE_TTL_MS).toISOString()
 
-  // `deletedAt` is indexed on `dialogues`, and (per the comment on `Base`)
-  // every entry in that index is already a tombstone, so this is a plain
-  // efficient range scan.
+  // `deletedAt` is indexed on `dialogues`, and (per the comment on `Base`
+  // in `src/lib/records.ts`) every entry in that index is already a
+  // tombstone, so this is a plain efficient range scan.
   const staleDialogueIds = await db.dialogues
     .where('deletedAt')
     .below(cutoff)

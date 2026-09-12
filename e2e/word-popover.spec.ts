@@ -3,7 +3,7 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { expect, test } from './fixtures'
 import type { AnnotationRecord, Dialogue, LineAnnotation } from '../src/db/db'
-import { DB_SCHEMA_VERSION } from '../src/db/db'
+import { DB_SCHEMA_VERSION, LEGACY_RUN } from '../src/db/db'
 import type { Snapshot } from '../src/db/snapshot'
 import { SNAPSHOT_FORMAT } from '../src/db/snapshot'
 
@@ -45,6 +45,7 @@ function makeSnapshot(): { dialogueId: string; snapshot: Snapshot } {
     status: 'complete',
     usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
     durationMs: 0,
+    run: LEGACY_RUN,
   }
   return {
     dialogueId,

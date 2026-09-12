@@ -1,11 +1,20 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, ANNOTATION_SCHEMA_VERSION } from './db'
-import type { AnnotationRecord, Dialogue, LineAnnotation } from './db'
+import { db, ANNOTATION_SCHEMA_VERSION, LEGACY_RUN } from './db'
+import type {
+  AnnotationRecord,
+  Dialogue,
+  LineAnnotation,
+  OutboxRow,
+  SettingRow,
+} from './db'
+import { manifestKey } from '../lib/records'
+import type { RecordKind } from '../lib/records'
+import { mergeSettingRows, pickWinner } from '../lib/merge'
 import { newId } from '../lib/ids'
 import { nowIso } from '../lib/time'
 
-// The only write path to `dialogues`/`annotations`. No component or hook
-// writes to those tables directly (CLAUDE.md hard rule 1, .claude/rules/data.md).
+// The only write path to `dialogues`/`annotations`/`outbox`. No component or
+// hook writes to those tables directly (CLAUDE.md hard rule 1, .claude/rules/data.md).
 
 const MAX_TITLE_LENGTH = 80
 // A leading "speaker:" (or full-width "：") prefix, e.g. "Somchai: ...".
@@ -25,6 +34,57 @@ function deriveTitle(sourceText: string): string {
   return `${title.slice(0, MAX_TITLE_LENGTH).trimEnd()}…`
 }
 
+// ---------------------------------------------------------------------------
+// Outbox (PLAN.MD §4.4/§4.5) — the client sync push queue
+// ---------------------------------------------------------------------------
+
+/**
+ * Queues `kind:id` for the next `src/sync/push.ts` run. Call **inside** the
+ * same Dexie transaction as the write it records (Dexie joins an already-
+ * open transaction automatically as long as `db.outbox` is one of the
+ * tables passed to `db.transaction(...)`), so a write and its outbox entry
+ * are always atomic. Uses `put`, so repeated writes to the same record
+ * before it's drained coalesce into one row with the latest `updatedAt`.
+ * `mergeRemote*` below must never call this — an incoming remote write is
+ * not a local change and must not echo back to the server.
+ */
+export async function enqueueOutbox(
+  kind: RecordKind,
+  id: string,
+  updatedAt: string,
+): Promise<void> {
+  await db.outbox.put({ key: manifestKey(kind, id), kind, id, updatedAt })
+}
+
+/** A snapshot of every row currently queued for push. */
+export async function takeOutbox(): Promise<OutboxRow[]> {
+  return db.outbox.toArray()
+}
+
+/**
+ * Removes `key` from the outbox, but only if its `updatedAt` is still what
+ * the caller last saw — i.e. only if nothing wrote to that record again
+ * while the push for this row was in flight. If a newer local write landed
+ * mid-push, `enqueueOutbox` already overwrote the row with a fresher
+ * `updatedAt`, this delete is a no-op, and the row stays queued for the
+ * next push.
+ */
+export async function clearOutbox(
+  key: string,
+  updatedAt: string,
+): Promise<void> {
+  await db.transaction('rw', db.outbox, async () => {
+    const row = await db.outbox.get(key)
+    if (row && row.updatedAt === updatedAt) {
+      await db.outbox.delete(key)
+    }
+  })
+}
+
+// ---------------------------------------------------------------------------
+// Dialogues
+// ---------------------------------------------------------------------------
+
 export async function createDialogue(sourceText: string): Promise<Dialogue> {
   const now = nowIso()
   const dialogue: Dialogue = {
@@ -36,25 +96,35 @@ export async function createDialogue(sourceText: string): Promise<Dialogue> {
     sourceText,
     currentAnnotationId: null,
   }
-  await db.dialogues.add(dialogue)
+  await db.transaction('rw', db.dialogues, db.outbox, async () => {
+    await db.dialogues.add(dialogue)
+    await enqueueOutbox('dialogue', dialogue.id, dialogue.updatedAt)
+  })
   return dialogue
 }
 
 export async function renameDialogue(id: string, title: string): Promise<void> {
-  await db.dialogues.update(id, { title, updatedAt: nowIso() })
+  const updatedAt = nowIso()
+  await db.transaction('rw', db.dialogues, db.outbox, async () => {
+    await db.dialogues.update(id, { title, updatedAt })
+    await enqueueOutbox('dialogue', id, updatedAt)
+  })
 }
 
 /** Soft delete only — never `db.dialogues.delete()` (see `purgeTombstones`). */
 export async function softDeleteDialogue(id: string): Promise<void> {
   const now = nowIso()
-  await db.dialogues.update(id, { deletedAt: now, updatedAt: now })
+  await db.transaction('rw', db.dialogues, db.outbox, async () => {
+    await db.dialogues.update(id, { deletedAt: now, updatedAt: now })
+    await enqueueOutbox('dialogue', id, now)
+  })
 }
 
 /** Plain async read, for tests and any non-React caller. */
 export async function listDialoguesAsync(): Promise<Dialogue[]> {
   const rows = await db.dialogues.orderBy('updatedAt').reverse().toArray()
   // `deletedAt` isn't usable as an index query here — see the comment on
-  // `Base` in db.ts — so live rows are filtered in JS.
+  // `Base` in `src/lib/records.ts` — so live rows are filtered in JS.
   return rows.filter((row) => row.deletedAt === null)
 }
 
@@ -93,11 +163,25 @@ export async function getAnnotationsByIds(
   return db.annotations.bulkGet(ids)
 }
 
+// ---------------------------------------------------------------------------
+// Annotation lifecycle
+//
+// @deprecated — removed in M3. `createAnnotation`/`upsertAnnotationLine`/
+// `finalizeAnnotation` back the browser-side pipeline (`src/llm/pipeline.ts`)
+// only until M3 moves annotation to the server (`api/_lib/runner.ts`); no
+// new caller should be added. They intentionally stay decoupled from the
+// outbox except at `finalizeAnnotation` — a partial, still-running client
+// job has nothing useful to sync yet.
+// ---------------------------------------------------------------------------
+
 /**
  * Creates a new (`status: 'partial'`) annotation record with `lineCount`
- * empty slots, ready for `upsertAnnotationLine` to fill in as the M3
- * pipeline's per-line calls land. Not itself listed in docs/plans/P0.md §4.1's repo
- * API, but required to construct the record that API operates on.
+ * empty slots, ready for `upsertAnnotationLine` to fill in as the P0
+ * pipeline's per-line calls land. `run` starts as the legacy shape
+ * (PLAN.MD §4.4) with `state: 'running'`, since this record represents a
+ * job actively running in this tab right now, not an already-finished one.
+ *
+ * @deprecated removed in M3
  */
 export async function createAnnotation(params: {
   dialogueId: string
@@ -120,6 +204,7 @@ export async function createAnnotation(params: {
     status: 'partial',
     usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
     durationMs: 0,
+    run: { ...LEGACY_RUN, state: 'running' },
   }
   await db.annotations.add(annotation)
   return annotation
@@ -127,7 +212,12 @@ export async function createAnnotation(params: {
 
 export type LineResult = { line: LineAnnotation } | { error: string }
 
-/** Sets (or clears) one line's result/error, index-aligned with `split(sourceText)`. */
+/**
+ * Sets (or clears) one line's result/error, index-aligned with
+ * `split(sourceText)`.
+ *
+ * @deprecated removed in M3
+ */
 export async function upsertAnnotationLine(
   annotationId: string,
   lineIndex: number,
@@ -154,26 +244,95 @@ export async function upsertAnnotationLine(
   })
 }
 
-/** Marks an annotation `'complete'`; the pipeline decides when to call this. */
+/**
+ * Marks an annotation `'complete'` and its `run` `'done'`; the pipeline
+ * decides when to call this. Enqueues the finished record for push — the
+ * one point in the legacy pipeline where there's a finished record worth
+ * syncing.
+ *
+ * @deprecated removed in M3
+ */
 export async function finalizeAnnotation(annotationId: string): Promise<void> {
-  const changed = await db.annotations.update(annotationId, {
-    status: 'complete',
-    updatedAt: nowIso(),
+  const updatedAt = nowIso()
+  await db.transaction('rw', db.annotations, db.outbox, async () => {
+    const existing = await db.annotations.get(annotationId)
+    if (!existing) {
+      throw new Error(`finalizeAnnotation: no annotation "${annotationId}"`)
+    }
+    await db.annotations.update(annotationId, {
+      status: 'complete',
+      updatedAt,
+      run: { ...existing.run, state: 'done' },
+    })
+    await enqueueOutbox('annotation', annotationId, updatedAt)
   })
-  if (changed === 0) {
-    throw new Error(`finalizeAnnotation: no annotation "${annotationId}"`)
-  }
 }
 
 export async function setCurrentAnnotation(
   dialogueId: string,
   annotationId: string | null,
 ): Promise<void> {
-  const changed = await db.dialogues.update(dialogueId, {
-    currentAnnotationId: annotationId,
-    updatedAt: nowIso(),
+  const updatedAt = nowIso()
+  await db.transaction('rw', db.dialogues, db.outbox, async () => {
+    const changed = await db.dialogues.update(dialogueId, {
+      currentAnnotationId: annotationId,
+      updatedAt,
+    })
+    if (changed === 0) {
+      throw new Error(`setCurrentAnnotation: no dialogue "${dialogueId}"`)
+    }
+    await enqueueOutbox('dialogue', dialogueId, updatedAt)
   })
-  if (changed === 0) {
-    throw new Error(`setCurrentAnnotation: no dialogue "${dialogueId}"`)
-  }
+}
+
+// ---------------------------------------------------------------------------
+// Remote merges (PLAN.MD §4.5) — used only by `src/sync/pull.ts` /
+// `src/sync/push.ts`. Last-writer-wins via `src/lib/merge.ts`'s `pickWinner`
+// / `mergeSettingRows`, the same rule the server applies. Never enqueue an
+// outbox row here: an incoming remote record is not a local change, and
+// echoing it back would loop forever.
+// ---------------------------------------------------------------------------
+
+/** Merges an incoming remote `Dialogue`; returns the local winner. */
+export async function mergeRemoteDialogue(remote: Dialogue): Promise<Dialogue> {
+  return db.transaction('rw', db.dialogues, async () => {
+    const local = await db.dialogues.get(remote.id)
+    if (!local || pickWinner(local, remote) === 'incoming') {
+      await db.dialogues.put(remote)
+      return remote
+    }
+    return local
+  })
+}
+
+/** Merges an incoming remote `AnnotationRecord`; returns the local winner. */
+export async function mergeRemoteAnnotation(
+  remote: AnnotationRecord,
+): Promise<AnnotationRecord> {
+  return db.transaction('rw', db.annotations, async () => {
+    const local = await db.annotations.get(remote.id)
+    if (!local || pickWinner(local, remote) === 'incoming') {
+      await db.annotations.put(remote)
+      return remote
+    }
+    return local
+  })
+}
+
+/**
+ * Merges incoming remote settings rows against every local row (per-key
+ * LWW, `mergeSettingRows`); returns the merged set (which is also what gets
+ * written locally).
+ */
+export async function mergeRemoteSettings(
+  remote: SettingRow[],
+): Promise<SettingRow[]> {
+  return db.transaction('rw', db.settings, async () => {
+    const local = await db.settings.toArray()
+    const merged = mergeSettingRows(local, remote)
+    if (merged.length > 0) {
+      await db.settings.bulkPut(merged)
+    }
+    return merged
+  })
 }

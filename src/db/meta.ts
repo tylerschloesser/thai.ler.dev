@@ -25,3 +25,24 @@ export async function getStoredSchemaVersion(): Promise<number> {
   const value = await getMetaValue('schemaVersion')
   return value ? Number(value) : DB_SCHEMA_VERSION
 }
+
+/** ISO timestamp of the last successful `src/sync/pull.ts` run, or `null` before the first one. */
+export async function getLastPullAt(): Promise<string | null> {
+  return (await getMetaValue('lastPullAt')) ?? null
+}
+
+export async function setLastPullAt(value: string): Promise<void> {
+  await db.meta.put({ key: 'lastPullAt', value })
+}
+
+/**
+ * Whether `src/sync/index.ts`'s `startSync()` has already run its one-time
+ * "enqueue every local record" migration for this device (PLAN.MD §4.5).
+ */
+export async function getSyncInitialized(): Promise<boolean> {
+  return (await getMetaValue('syncInitialized')) === '1'
+}
+
+export async function setSyncInitialized(): Promise<void> {
+  await db.meta.put({ key: 'syncInitialized', value: '1' })
+}
