@@ -8,7 +8,10 @@ import { loadEnv } from './scripts/load-env.ts'
 loadEnv()
 
 const remote = process.env.PLAYWRIGHT_BASE_URL
-const baseURL = remote ?? 'http://localhost:4173'
+// Overridable so a second agent's local run never collides on the default
+// port (PLAN.MD §5 M1 acceptance); defaults to 4173, matching webServer.
+const port = process.env.E2E_PORT ?? '4173'
+const baseURL = remote ?? `http://localhost:${port}`
 
 export default defineConfig({
   testDir: 'e2e',
@@ -46,7 +49,7 @@ export default defineConfig({
   webServer: remote
     ? undefined
     : {
-        command: 'pnpm build && pnpm preview --port 4173 --strictPort',
+        command: `pnpm build && pnpm preview --port ${port} --strictPort`,
         url: baseURL,
         reuseExistingServer: true,
         timeout: 60_000,

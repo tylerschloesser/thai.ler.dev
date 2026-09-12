@@ -21,6 +21,8 @@ export interface Env {
   /** `undefined` only when running on Vercel with no `INTERNAL_SECRET` set. */
   INTERNAL_SECRET: string | undefined
   STEP_BUDGET_MS: number
+  /** Only meaningful for `BLOB_BACKEND=disk`; lets `scripts/smoke-runner.ts` point a spawned preview at an isolated temp root. */
+  BLOB_DISK_ROOT: string | undefined
 }
 
 const BLOB_BACKENDS = ['memory', 'disk', 'vercel'] as const
@@ -85,5 +87,6 @@ export function readEnv(): Env {
     ALLOW_TEST_MODE: allowTestMode,
     INTERNAL_SECRET: internalSecret,
     STEP_BUDGET_MS: stepBudgetMs,
+    BLOB_DISK_ROOT: process.env['BLOB_DISK_ROOT'],
   }
 }

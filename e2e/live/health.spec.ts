@@ -5,8 +5,9 @@ import { test, expect } from '../fixtures'
  * `scripts/e2e-vercel.sh` (`pnpm test:e2e:vercel`), never locally
  * (`playwright.config.ts` sets `grepInvert: /@live/` when
  * `PLAYWRIGHT_BASE_URL` isn't set). Exercises the real runtime: the
- * `vercel` Blob backend, the routing spike stubs coexisting, and the SPA
- * rewrite for a deep link (PLAN.MD §4.8, §5 M0 item 6).
+ * `vercel` Blob backend, `/api/annotation` and `/api/annotation/step`
+ * coexisting as separate routes with real (not M0-stub) behaviour, and the
+ * SPA rewrite for a deep link (PLAN.MD §4.8, §5 M0/M1).
  */
 
 test.describe('live/health', () => {
@@ -33,16 +34,15 @@ test.describe('live/health', () => {
   )
 
   test(
-    '/api/annotation and /api/annotation/resume coexist',
+    '/api/annotation and /api/annotation/step coexist, and both answer real behaviour',
     { tag: '@live' },
     async ({ request }) => {
-      const get = await request.get('/api/annotation')
-      expect(get.status()).toBe(501)
-      expect(await get.json()).toEqual({ stub: 'annotation' })
+      const get = await request.get('/api/annotation?id=missing')
+      expect(get.status()).toBe(404)
+      expect((await get.json()).error?.kind).toBe('not_found')
 
-      const post = await request.post('/api/annotation/resume')
-      expect(post.status()).toBe(501)
-      expect(await post.json()).toEqual({ stub: 'annotation/resume' })
+      const post = await request.post('/api/annotation/step?id=missing')
+      expect(post.status()).toBe(401)
     },
   )
 
