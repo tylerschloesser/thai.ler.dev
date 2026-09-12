@@ -221,4 +221,27 @@ describe('annotateLine', () => {
     expect(err).toBeInstanceOf(AnnotateError)
     expect((err as AnnotateError).kind).toBe('rate_limited')
   })
+
+  it('calls onStart once the stream begins, before the result resolves', async () => {
+    const client = clientWithFetch(
+      async () =>
+        new Response(sseFromText(JSON.stringify(VALID_LINE)), {
+          status: 200,
+          headers: { 'content-type': 'text/event-stream' },
+        }),
+    )
+
+    const calls: string[] = []
+    const onStart = () => calls.push('start')
+
+    await annotateLine(client, {
+      model: 'claude-opus-5',
+      lines: LINES,
+      lineIndex: 0,
+      onStart,
+    })
+    calls.push('resolved')
+
+    expect(calls).toEqual(['start', 'resolved'])
+  })
 })

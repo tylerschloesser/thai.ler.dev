@@ -16,11 +16,12 @@ import { describe, expect, it } from 'vitest'
  *
  * Scans every `.ts` file under those three roots for relative (`.`-
  * prefixed) specifiers in static `from '...'`, dynamic `import('...')`,
- * `export ... from '...'`, and bare `import '...'` forms. `.json` is only
- * allowed in `*.test.ts` files (Node ESM needs `with { type: 'json' }` for
- * a real JSON import, which no runtime file here uses - see the M0
- * report). Bare package specifiers (`zod`, `@vercel/blob`, `node:fs`, ...)
- * are ignored.
+ * `export ... from '...'`, and bare `import '...'` forms. A `.json`
+ * specifier is allowed only when the import carries `with { type: 'json' }`
+ * (Node ESM's required import-attribute syntax for a real JSON import,
+ * e.g. `api/_lib/providers/fake.ts`'s fixture import - M1) - a `.json`
+ * specifier without it is still a violation, in a test file or not. Bare
+ * package specifiers (`zod`, `@vercel/blob`, `node:fs`, ...) are ignored.
  */
 
 const REPO_ROOT = path.resolve(
@@ -60,9 +61,18 @@ function lineOf(content: string, index: number): number {
   return content.slice(0, index).split('\n').length
 }
 
+// How far past the end of the matched specifier to look for a trailing
+// `with { type: 'json' }` import-attribute clause.
+const JSON_ATTRIBUTE_WINDOW = 40
+const JSON_TYPE_ATTRIBUTE_RE = /^\s*with\s*\{\s*type:\s*['"]json['"]\s*\}/
+
+function hasJsonTypeAttribute(content: string, afterIndex: number): boolean {
+  const tail = content.slice(afterIndex, afterIndex + JSON_ATTRIBUTE_WINDOW)
+  return JSON_TYPE_ATTRIBUTE_RE.test(tail)
+}
+
 function findViolations(file: string): Violation[] {
   const content = readFileSync(file, 'utf8')
-  const allowJson = file.endsWith('.test.ts')
   const violations: Violation[] = []
 
   for (const re of [FROM_RE, DYNAMIC_IMPORT_RE, BARE_IMPORT_RE]) {
@@ -72,7 +82,12 @@ function findViolations(file: string): Violation[] {
       const specifier = match[1]
       if (specifier === undefined || !specifier.startsWith('.')) continue // bare package import
       if (specifier.endsWith('.js')) continue
-      if (allowJson && specifier.endsWith('.json')) continue
+      if (
+        specifier.endsWith('.json') &&
+        hasJsonTypeAttribute(content, match.index + match[0].length)
+      ) {
+        continue
+      }
       violations.push({ file, line: lineOf(content, match.index), specifier })
     }
   }

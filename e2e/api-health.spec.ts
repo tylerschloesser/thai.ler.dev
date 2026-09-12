@@ -1,11 +1,13 @@
 import { test, expect } from './fixtures'
 
 /**
- * Fast, local-only checks of the M0 API scaffolding (PLAN.MD §5 M0 item 6):
- * `/api/health`'s shape, the routing spike stubs, and that unknown/`_`-
- * prefixed `/api/*` paths 404 as JSON instead of falling through to the
- * SPA's `index.html` (`vercel.json`'s rewrite excludes `/api/`, and
- * `scripts/vite-api-plugin.ts` mirrors that locally).
+ * Fast, local-only checks of the API scaffolding (PLAN.MD §5 M0 item 6,
+ * updated for M1's real handlers): `/api/health`'s shape, that
+ * unknown/`_`-prefixed `/api/*` paths 404 as JSON instead of falling
+ * through to the SPA's `index.html` (`vercel.json`'s rewrite excludes
+ * `/api/`, and `scripts/vite-api-plugin.ts` mirrors that locally), a
+ * missing annotation 404s, and the internal continuation hop's auth guard
+ * 401s without the secret.
  */
 
 test.describe('api-health', () => {
@@ -41,17 +43,17 @@ test.describe('api-health', () => {
     expect(res.status()).toBe(404)
   })
 
-  test('GET /api/annotation is the M0 routing stub', async ({ request }) => {
-    const res = await request.get('/api/annotation')
-    expect(res.status()).toBe(501)
-    expect(await res.json()).toEqual({ stub: 'annotation' })
+  test('GET /api/annotation?id=missing is a JSON 404', async ({ request }) => {
+    const res = await request.get('/api/annotation?id=missing')
+    expect(res.status()).toBe(404)
+    const body = await res.json()
+    expect(body.error?.kind).toBe('not_found')
   })
 
-  test('POST /api/annotation/resume is the M0 routing stub', async ({
+  test('POST /api/annotation/step without the internal secret is 401', async ({
     request,
   }) => {
-    const res = await request.post('/api/annotation/resume')
-    expect(res.status()).toBe(501)
-    expect(await res.json()).toEqual({ stub: 'annotation/resume' })
+    const res = await request.post('/api/annotation/step?id=missing')
+    expect(res.status()).toBe(401)
   })
 })

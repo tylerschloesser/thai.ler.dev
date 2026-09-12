@@ -10,6 +10,7 @@ const ENV_KEYS = [
   'BLOB_BACKEND',
   'INTERNAL_SECRET',
   'STEP_BUDGET_MS',
+  'BLOB_DISK_ROOT',
 ] as const
 
 let snapshot: Record<string, string | undefined>
@@ -109,5 +110,11 @@ describe('readEnv', () => {
     expect(readEnv().STEP_BUDGET_MS).toBe(250_000)
     process.env['STEP_BUDGET_MS'] = '-5'
     expect(readEnv().STEP_BUDGET_MS).toBe(250_000)
+  })
+
+  it('BLOB_DISK_ROOT is undefined by default and passes through when set', () => {
+    expect(readEnv().BLOB_DISK_ROOT).toBeUndefined()
+    process.env['BLOB_DISK_ROOT'] = '/tmp/thai-smoke'
+    expect(readEnv().BLOB_DISK_ROOT).toBe('/tmp/thai-smoke')
   })
 })

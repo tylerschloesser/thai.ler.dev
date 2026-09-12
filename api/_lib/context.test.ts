@@ -79,6 +79,38 @@ describe('createContext', () => {
     expect(ctx2.stepBudgetMs).toBe(250_000)
   })
 
+  it('parses a valid thai_fake_delay_ms in test mode', () => {
+    process.env['ALLOW_TEST_MODE'] = '1'
+    const ctx = createContext(request('thai_fake_delay_ms=1000'))
+    expect(ctx.fakeDelayMs).toBe(1000)
+  })
+
+  it('allows thai_fake_delay_ms=0', () => {
+    process.env['ALLOW_TEST_MODE'] = '1'
+    const ctx = createContext(request('thai_fake_delay_ms=0'))
+    expect(ctx.fakeDelayMs).toBe(0)
+  })
+
+  it('rejects a thai_fake_delay_ms above 60000 or not a non-negative integer', () => {
+    process.env['ALLOW_TEST_MODE'] = '1'
+    expect(
+      createContext(request('thai_fake_delay_ms=60001')).fakeDelayMs,
+    ).toBeNull()
+    expect(
+      createContext(request('thai_fake_delay_ms=-1')).fakeDelayMs,
+    ).toBeNull()
+    expect(
+      createContext(request('thai_fake_delay_ms=abc')).fakeDelayMs,
+    ).toBeNull()
+  })
+
+  it('ignores thai_fake_delay_ms when test mode is off', () => {
+    process.env['ALLOW_TEST_MODE'] = '0'
+    expect(
+      createContext(request('thai_fake_delay_ms=1000')).fakeDelayMs,
+    ).toBeNull()
+  })
+
   it('testCookie is null when there are no thai_* cookies, even in test mode', () => {
     process.env['ALLOW_TEST_MODE'] = '1'
     const ctx = createContext(request('other=1'))

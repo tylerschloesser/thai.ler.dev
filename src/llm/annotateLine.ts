@@ -53,6 +53,8 @@ export interface AnnotateLineOptions {
   lines: SplitLine[]
   lineIndex: number
   signal?: AbortSignal
+  /** First stream event (cache warm-up gate) - see api/_lib/runner.ts. */
+  onStart?: () => void
 }
 
 /** Wire shape of `output_config.format`, deliberately narrower than the SDK's `AutoParseableOutputFormat` - see the comment on `outputFormat` below. */
@@ -168,6 +170,11 @@ export async function annotateLine(
     },
     { signal: opts.signal },
   )
+
+  if (opts.onStart) {
+    const onStart = opts.onStart
+    stream.once('streamEvent', () => onStart())
+  }
 
   if (opts.signal) {
     const abortStream = () => stream.abort()

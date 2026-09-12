@@ -25,6 +25,8 @@ export interface RequestContext {
   modelOverride: 'fake' | 'fake-slow' | null
   /** Raw `thai_fake_error` cookie value (an `AnnotateErrorKind`, unvalidated here). */
   fakeError: string | null
+  /** Validated `thai_fake_delay_ms` cookie value (0..60000), or null (provider default applies). */
+  fakeDelayMs: number | null
   /** Raw `Cookie` header, restricted to `thai_*` pairs, for `hop()` to forward. */
   testCookie: string | null
   origin: string
@@ -32,6 +34,8 @@ export interface RequestContext {
 
 const NS_RE = /^[a-z0-9-]{1,64}$/
 const POSITIVE_INT_RE = /^[1-9][0-9]*$/
+const NON_NEGATIVE_INT_RE = /^(0|[1-9][0-9]*)$/
+const MAX_FAKE_DELAY_MS = 60_000
 
 function parseCookies(header: string): Record<string, string> {
   const out: Record<string, string> = {}
@@ -67,6 +71,14 @@ export function createContext(request: Request): RequestContext {
   const rawFakeError = cookies['thai_fake_error']
   const fakeError = rawFakeError !== undefined ? rawFakeError : null
 
+  const rawFakeDelay = cookies['thai_fake_delay_ms']
+  const fakeDelayMs =
+    rawFakeDelay !== undefined &&
+    NON_NEGATIVE_INT_RE.test(rawFakeDelay) &&
+    Number(rawFakeDelay) <= MAX_FAKE_DELAY_MS
+      ? Number(rawFakeDelay)
+      : null
+
   let testCookie: string | null = null
   if (env.ALLOW_TEST_MODE && cookieHeader) {
     const kept = cookieHeader
@@ -81,10 +93,11 @@ export function createContext(request: Request): RequestContext {
     testMode: env.ALLOW_TEST_MODE,
     ns,
     prefix: prefixFor(ns),
-    store: createStore(env.BLOB_BACKEND),
+    store: createStore(env.BLOB_BACKEND, { diskRoot: env.BLOB_DISK_ROOT }),
     stepBudgetMs,
     modelOverride,
     fakeError,
+    fakeDelayMs,
     testCookie,
     origin: new URL(request.url).origin,
   }
