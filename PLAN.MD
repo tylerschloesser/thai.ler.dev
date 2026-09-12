@@ -401,8 +401,9 @@ merged. LWW + tombstones already exist; `deviceId` already tagged.
   snapshot; import merges), `theme` (toggle sets `data-theme`, persists),
   `deep-link` (`/d/unknown` shows not-found; direct load of `/settings`
   works — this validates the Vercel rewrite when run remotely).
-- **Against Vercel**: `scripts/e2e-vercel.sh` = `url=$(vercel deploy --yes)`
-  → `PLAYWRIGHT_BASE_URL=$url pnpm exec playwright test`. Playwright
+- **Against Vercel**: `scripts/e2e-vercel.sh` runs `vercel deploy --yes`,
+  parses the deployment URL out of the CLI's JSON stdout envelope, then
+  `PLAYWRIGHT_BASE_URL=$url pnpm exec playwright test`. Playwright
   `extraHTTPHeaders` sends `x-vercel-protection-bypass:
   $VERCEL_AUTOMATION_BYPASS_SECRET` and `x-vercel-set-bypass-cookie: true`.
 
@@ -426,7 +427,7 @@ verified. Each milestone ends with: `pnpm check && pnpm test && pnpm test:e2e`
 green, a commit, a push, and (M0 and M5 at minimum, ideally every
 milestone) `pnpm test:e2e:vercel` green.
 
-### M0 — Baseline, tooling, context, deploy loop `[ ]`  (serial, ~1 agent)
+### M0 — Baseline, tooling, context, deploy loop `[x]`  (serial, ~1 agent)
 
 Goal: the entire commit → push → deploy → e2e-on-Vercel loop works before any
 feature code exists.
@@ -742,10 +743,18 @@ if (msg.stop_reason === 'refusal') throw new AnnotateError('refused', msg.stop_d
 #!/usr/bin/env sh
 set -eu
 set -a; [ -f .env.local ] && . ./.env.local; set +a
-url=$(vercel deploy --yes)            # preview only; never --prod
+raw=$(vercel deploy --yes)            # preview only; never --prod
+# CLI 56.x prints a JSON envelope on stdout when stdout is not a TTY
+url=$(printf '%s\n' "$raw" | sed -n 's/.*"url"[[:space:]]*:[[:space:]]*"\(https:\/\/[^"]*\)".*/\1/p' | head -n 1)
+[ -n "$url" ] || url=$(printf '%s\n' "$raw" | grep -o 'https://[^"[:space:]]*\.vercel\.app' | head -n 1)
 echo "Preview: $url"
 PLAYWRIGHT_BASE_URL="$url" pnpm exec playwright test "$@"
 ```
+
+**Corrected 2026-09-12 during M0**: `vercel deploy --yes` on CLI 56.4.1 does
+*not* print a bare URL to stdout when stdout is a pipe — it prints a JSON
+envelope (`{"status":"ok","deployment":{"url":"https://…"}}`). The original
+one-liner captured the whole blob and every remote test failed on `page.goto`.
 
 **tokens.css skeleton** — see §4.4; Radix step contract: 1 app bg · 2 subtle
 bg · 3–5 UI bg/hover/active · 6–8 borders · 9–10 solid/hover · 11 muted
