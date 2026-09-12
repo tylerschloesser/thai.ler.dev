@@ -519,7 +519,7 @@ Acceptance: all specs green locally and on Vercel; manual walk with a real
 key on the preview URL (Tyler or executor via `playwright-cli` with the
 mock disabled) annotates a real dialogue end-to-end.
 
-### M5 — Hardening and handoff `[~]`
+### M5 — Hardening and handoff `[x]`
 
 1. Accessibility pass (labels, focus rings, `aria-live` on progress).
 2. Performance: library list stays cheap with 100 dialogues (annotations in
@@ -530,6 +530,36 @@ mock disabled) annotates a real dialogue end-to-end.
    one"). Update `PLAN.MD` status markers; add a "Next" list (Blob sync,
    server-side call, IPA, summary, audio).
 5. Final `pnpm test:e2e:vercel` green; commit; push. Report the preview URL.
+
+---
+
+## 5b. Next (after P0)
+
+Ordered by value per unit of work, as understood at the end of P0.
+
+1. **Move the Anthropic call server-side.** The single biggest constraint
+   today: the API key is inlined into the client bundle, which is the only
+   reason production is never deployed to. One Vercel function proxying
+   `/v1/messages` (streaming passthrough) removes the constraint and makes
+   the public alias usable.
+2. **Sync to Vercel Blob** (§4.5). The snapshot format, LWW merge,
+   tombstones and `deviceId` already exist; this is one `api/sync.ts` plus a
+   pull-merge-push button.
+3. **Dialogue-level summary** — a short "what this conversation is about and
+   what it teaches" header. Cheap: one extra call per dialogue, reusing the
+   cached prefix.
+4. **`output_config.effort` as a Settings knob**, plus a Sonnet default for
+   long dialogues. Opus latency is the main felt cost of annotating.
+5. **IPA romanization** alongside Paiboon. The schema has room; it is a
+   prompt and a display toggle.
+6. **Audio / TTS per word and per line**, then spaced repetition and
+   flashcards over the words already captured.
+7. **Per-word "ask a question"** — a follow-up call scoped to one word with
+   the dialogue as context.
+
+Known small gaps left from M5: the Thai-font-size slider's accessible name
+does not include the live value; annotations belonging to a soft-deleted
+dialogue are never themselves tombstoned, so `purgeTombstones` leaves them.
 
 ---
 
