@@ -462,7 +462,7 @@ feature code exists.
 10. Verify: local suite green; `pnpm test:e2e:vercel` green (proves SSO
     bypass, SPA rewrite, env var plumbing). Commit + push.
 
-### M1 — Design system and UI kit `[ ]`  (parallel-safe: touches `src/styles`, `src/ui`, `src/app/theme.ts`, `index.html`)
+### M1 — Design system and UI kit `[~]`  (parallel-safe: touches `src/styles`, `src/ui`, `src/app/theme.ts`, `index.html`)
 
 1. `reset.css`, `primitives.css`, `tokens.css`, `global.css`, fonts import,
    `index.html` pre-paint theme script, `theme.ts` (read/write, system sync).
@@ -477,7 +477,7 @@ feature code exists.
 Acceptance: components render in light and dark; keyboard nav works for
 Dialog/Popover/Select; no hard-coded colors outside `tokens.css`.
 
-### M2 — Data layer `[ ]`  (parallel-safe: `src/db`, `src/lib`, `src/app/debug.ts`)
+### M2 — Data layer `[~]`  (parallel-safe: `src/db`, `src/lib`, `src/app/debug.ts`)
 
 1. `db.ts` Dexie schema v1 + `meta` bootstrap (`deviceId`, `schemaVersion`).
 2. `repo.ts` write path; `settings.ts` typed getters/setters with defaults +
@@ -488,7 +488,7 @@ Dialog/Popover/Select; no hard-coded colors outside `tokens.css`.
 Acceptance: unit tests green; a scratch page or vitest with `fake-indexeddb`
 proves create → list → soft delete → export → import-merge round trip.
 
-### M3 — LLM layer `[ ]`  (parallel-safe: `src/llm`, `src/fixtures`, `scripts/gen-fixture.ts`, `e2e/mocks`)
+### M3 — LLM layer `[~]`  (parallel-safe: `src/llm`, `src/fixtures`, `scripts/gen-fixture.ts`, `e2e/mocks`)
 
 1. `split.ts` + tests. `schema.ts` + invariant checker + tests.
 2. `prompt.ts` (system prompt per §4.2; `PROMPT_VERSION = 1`).
