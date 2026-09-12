@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react'
 import { Toast as Base } from '@base-ui/react/toast'
 import styles from './Toast.module.css'
-
-/** Add/close/update toasts from any component beneath <ToastProvider>. */
-export const useToast = Base.useToastManager
+import { useToast } from './useToast'
 
 function ToastList() {
   const { toasts } = useToast()
