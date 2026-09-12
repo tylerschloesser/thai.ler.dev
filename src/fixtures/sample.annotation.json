@@ -1,0 +1,1379 @@
+[
+  {
+    "speaker": "พนักงาน (staff)",
+    "thai": "สวัสดีค่ะ รับอะไรดีคะ",
+    "translation": "Hello! What would you like to order?",
+    "sentences": [
+      {
+        "thai": "สวัสดีค่ะ",
+        "romanization": "sà-wàt-dii kâ",
+        "translation": "Hello.",
+        "literal": null,
+        "words": [
+          {
+            "thai": "สวัสดี",
+            "romanization": "sà-wàt-dii",
+            "gloss": "hello / greetings",
+            "partOfSpeech": "interjection",
+            "syllables": [
+              {
+                "thai": "ส",
+                "romanization": "sà",
+                "tone": "low",
+                "toneExplanation": "high-class initial ส + dead syllable -> low",
+                "meaning": null
+              },
+              {
+                "thai": "วัส",
+                "romanization": "wàt",
+                "tone": "low",
+                "toneExplanation": "high-class ส leads ว (silent linking) + dead syllable -> low",
+                "meaning": null
+              },
+              {
+                "thai": "ดี",
+                "romanization": "dii",
+                "tone": "mid",
+                "toneExplanation": "mid-class initial ด + live syllable -> mid",
+                "meaning": "good"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "spelling_mismatch",
+                "text": "Spelled s-w-a-s-d-i but spoken with an extra vowel: sà-wàt-dii. In fast speech it often shortens to 'wàt-dii'."
+              }
+            ]
+          },
+          {
+            "thai": "ค่ะ",
+            "romanization": "kâ",
+            "gloss": "polite particle (female speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ค่ะ",
+                "romanization": "kâ",
+                "tone": "falling",
+                "toneExplanation": "low-class initial ค + dead syllable + mai ek -> falling",
+                "meaning": null
+              }
+            ],
+            "notes": [
+              {
+                "kind": "particle",
+                "text": "Falling-tone ค่ะ ends statements; the high-tone คะ ends questions. Men use ครับ for both."
+              }
+            ]
+          }
+        ],
+        "notes": [
+          {
+            "kind": "register",
+            "text": "Standard polite greeting used at any time of day, by shop staff to customers."
+          }
+        ]
+      },
+      {
+        "thai": "รับอะไรดีคะ",
+        "romanization": "ráp à-rai dii ká",
+        "translation": "What would you like to order?",
+        "literal": "receive what good (question particle)",
+        "words": [
+          {
+            "thai": "รับ",
+            "romanization": "ráp",
+            "gloss": "to take / receive; (here) to have, to order",
+            "partOfSpeech": "verb",
+            "syllables": [
+              {
+                "thai": "รับ",
+                "romanization": "ráp",
+                "tone": "high",
+                "toneExplanation": "low-class initial ร + dead syllable (short vowel) -> high",
+                "meaning": "receive"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "common_phrase",
+                "text": "In restaurants and shops รับ is the standard verb for 'have/order' — a polite way of asking what the customer will take."
+              }
+            ]
+          },
+          {
+            "thai": "อะไร",
+            "romanization": "à-rai",
+            "gloss": "what",
+            "partOfSpeech": "question_word",
+            "syllables": [
+              {
+                "thai": "อะ",
+                "romanization": "à",
+                "tone": "low",
+                "toneExplanation": "mid-class initial อ + dead syllable -> low",
+                "meaning": null
+              },
+              {
+                "thai": "ไร",
+                "romanization": "rai",
+                "tone": "mid",
+                "toneExplanation": "low-class initial ร + live syllable -> mid",
+                "meaning": null
+              }
+            ],
+            "notes": []
+          },
+          {
+            "thai": "ดี",
+            "romanization": "dii",
+            "gloss": "good",
+            "partOfSpeech": "adjective",
+            "syllables": [
+              {
+                "thai": "ดี",
+                "romanization": "dii",
+                "tone": "mid",
+                "toneExplanation": "mid-class initial ด + live syllable -> mid",
+                "meaning": "good"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "idiom",
+                "text": "Tacking ดี onto a question softens it to 'what would be good?' — friendlier than a bare 'what?'"
+              }
+            ]
+          },
+          {
+            "thai": "คะ",
+            "romanization": "ká",
+            "gloss": "polite question particle (female speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "คะ",
+                "romanization": "ká",
+                "tone": "high",
+                "toneExplanation": "low-class initial ค + dead syllable (short vowel) -> high",
+                "meaning": null
+              }
+            ],
+            "notes": []
+          }
+        ],
+        "notes": [
+          {
+            "kind": "grammar",
+            "text": "Thai questions keep normal word order: the question word อะไร sits where the answer would go, with no 'do' or inversion."
+          }
+        ]
+      }
+    ],
+    "notes": [
+      {
+        "kind": "culture",
+        "text": "The waitress marks herself as female with ค่ะ/คะ; the male customer answers with ครับ throughout the dialogue."
+      }
+    ]
+  },
+  {
+    "speaker": "ลูกค้า (customer)",
+    "thai": "ขอผัดไทยกุ้งสดหนึ่งจานครับ",
+    "translation": "One plate of Pad Thai with fresh shrimp, please.",
+    "sentences": [
+      {
+        "thai": "ขอผัดไทยกุ้งสดหนึ่งจานครับ",
+        "romanization": "kǒo pàt tai gûng sòt nèung jaan kráp",
+        "translation": "Could I have one plate of Pad Thai with fresh shrimp, please.",
+        "literal": "request pad-thai shrimp fresh one plate (polite particle)",
+        "words": [
+          {
+            "thai": "ขอ",
+            "romanization": "kǒo",
+            "gloss": "may I have / please give me",
+            "partOfSpeech": "verb",
+            "syllables": [
+              {
+                "thai": "ขอ",
+                "romanization": "kǒo",
+                "tone": "rising",
+                "toneExplanation": "high-class initial ข + live syllable -> rising",
+                "meaning": "to ask for"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "common_phrase",
+                "text": "ขอ at the start of a sentence is the standard way to order or request something in a shop or restaurant — think 'I'll have...' rather than a literal 'I ask for'."
+              }
+            ]
+          },
+          {
+            "thai": "ผัดไทย",
+            "romanization": "pàt tai",
+            "gloss": "Pad Thai (stir-fried rice noodles)",
+            "partOfSpeech": "noun",
+            "syllables": [
+              {
+                "thai": "ผัด",
+                "romanization": "pàt",
+                "tone": "low",
+                "toneExplanation": "high-class initial ผ + dead syllable -> low",
+                "meaning": "to stir-fry"
+              },
+              {
+                "thai": "ไทย",
+                "romanization": "tai",
+                "tone": "mid",
+                "toneExplanation": "low-class initial ท + live syllable -> mid",
+                "meaning": "Thai"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "compound",
+                "text": "Literally 'Thai stir-fry'; as a dish name it is always said as one unit."
+              },
+              {
+                "kind": "pronunciation",
+                "text": "The final ย in ไทย is not pronounced — it is just 'tai', not 'tai-y'."
+              }
+            ]
+          },
+          {
+            "thai": "กุ้ง",
+            "romanization": "gûng",
+            "gloss": "shrimp",
+            "partOfSpeech": "noun",
+            "syllables": [
+              {
+                "thai": "กุ้ง",
+                "romanization": "gûng",
+                "tone": "falling",
+                "toneExplanation": "mid-class initial ก + live syllable + mai tho -> falling",
+                "meaning": "shrimp"
+              }
+            ],
+            "notes": []
+          },
+          {
+            "thai": "สด",
+            "romanization": "sòt",
+            "gloss": "fresh",
+            "partOfSpeech": "adjective",
+            "syllables": [
+              {
+                "thai": "สด",
+                "romanization": "sòt",
+                "tone": "low",
+                "toneExplanation": "high-class initial ส + dead syllable -> low",
+                "meaning": "fresh"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "grammar",
+                "text": "Thai adjectives follow the noun: กุ้งสด = 'shrimp fresh' = 'fresh shrimp'."
+              }
+            ]
+          },
+          {
+            "thai": "หนึ่ง",
+            "romanization": "nèung",
+            "gloss": "one",
+            "partOfSpeech": "number",
+            "syllables": [
+              {
+                "thai": "หนึ่ง",
+                "romanization": "nèung",
+                "tone": "low",
+                "toneExplanation": "high-class initial ห (silent, raises น) + live syllable + mai ek -> low",
+                "meaning": "one"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "spelling_mismatch",
+                "text": "The ห here is silent; it only exists to make the low-class น behave like a high-class consonant for tone."
+              }
+            ]
+          },
+          {
+            "thai": "จาน",
+            "romanization": "jaan",
+            "gloss": "plate (classifier for plated dishes)",
+            "partOfSpeech": "classifier",
+            "syllables": [
+              {
+                "thai": "จาน",
+                "romanization": "jaan",
+                "tone": "mid",
+                "toneExplanation": "mid-class initial จ + live syllable -> mid",
+                "meaning": "plate"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "classifier",
+                "text": "When ordering, the pattern is item + number + classifier: ผัดไทย...หนึ่งจาน = 'Pad Thai, one plate'. The number goes before the classifier, not before the noun as in English."
+              }
+            ]
+          },
+          {
+            "thai": "ครับ",
+            "romanization": "kráp",
+            "gloss": "(polite particle, male speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ครับ",
+                "romanization": "kráp",
+                "tone": "high",
+                "toneExplanation": "low-class initial ค + dead syllable (short vowel) -> high",
+                "meaning": "polite sentence-ending particle"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "register",
+                "text": "Said by male speakers; women use ค่ะ/คะ instead. Leaving it off would sound abrupt to a waiter."
+              }
+            ]
+          }
+        ],
+        "notes": [
+          {
+            "kind": "common_phrase",
+            "text": "This is the everyday template for ordering: ขอ + dish + number + classifier + ครับ/ค่ะ. Swap the dish and classifier and you can order almost anything."
+          }
+        ]
+      }
+    ],
+    "notes": []
+  },
+  {
+    "speaker": "พนักงาน (waitress)",
+    "thai": "เอาเผ็ดไหมคะ",
+    "translation": "Would you like it spicy?",
+    "sentences": [
+      {
+        "thai": "เอาเผ็ดไหมคะ",
+        "romanization": "ao pèt mǎi ká",
+        "translation": "Would you like it spicy?",
+        "literal": "want spicy [question] [polite particle]",
+        "words": [
+          {
+            "thai": "เอา",
+            "romanization": "ao",
+            "gloss": "to want; to take",
+            "partOfSpeech": "verb",
+            "syllables": [
+              {
+                "thai": "เอา",
+                "romanization": "ao",
+                "tone": "mid",
+                "toneExplanation": "mid-class initial อ + live syllable -> mid",
+                "meaning": "want / take"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "common_phrase",
+                "text": "เอา is the everyday verb for 'I'll take / I want (this)' when ordering; it is more casual and direct than ต้องการ."
+              }
+            ]
+          },
+          {
+            "thai": "เผ็ด",
+            "romanization": "pèt",
+            "gloss": "spicy (chili-hot)",
+            "partOfSpeech": "adjective",
+            "syllables": [
+              {
+                "thai": "เผ็ด",
+                "romanization": "pèt",
+                "tone": "low",
+                "toneExplanation": "high-class initial ผ + dead syllable -> low",
+                "meaning": "spicy"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "no_equivalent",
+                "text": "เผ็ด means chili-hot only; hot in temperature is ร้อน (róon)."
+              }
+            ]
+          },
+          {
+            "thai": "ไหม",
+            "romanization": "mǎi",
+            "gloss": "yes/no question marker",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ไหม",
+                "romanization": "mǎi",
+                "tone": "rising",
+                "toneExplanation": "high-class initial ห (silent, leading ม) + live syllable -> rising",
+                "meaning": "question marker"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "pronunciation",
+                "text": "In everyday speech this is usually said มั้ย (mái) with a high tone, even though the textbook form is rising."
+              },
+              {
+                "kind": "spelling_mismatch",
+                "text": "The ห here is silent; it only serves to make ม behave as a high-class consonant for tone purposes."
+              }
+            ]
+          },
+          {
+            "thai": "คะ",
+            "romanization": "ká",
+            "gloss": "polite particle (female speaker, questions)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "คะ",
+                "romanization": "ká",
+                "tone": "high",
+                "toneExplanation": "low-class initial ค + dead syllable (short vowel) -> high",
+                "meaning": "polite particle"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "register",
+                "text": "Female speakers use high-tone คะ at the end of questions, but falling-tone ค่ะ for statements. Male speakers would say ครับ in both cases."
+              }
+            ]
+          }
+        ],
+        "notes": [
+          {
+            "kind": "grammar",
+            "text": "Thai yes/no questions are formed by putting ไหม at the end of a plain statement; there is no change in word order and no word for 'do'."
+          },
+          {
+            "kind": "colloquial",
+            "text": "The object ('it', i.e. the pad thai) is simply left out, which is normal in Thai when context makes it obvious."
+          }
+        ]
+      }
+    ],
+    "notes": []
+  },
+  {
+    "speaker": "ลูกค้า",
+    "thai": "เผ็ดน้อยนะครับ ผมกินเผ็ดไม่ค่อยเก่ง",
+    "translation": "Just a little spicy, please. I'm not very good with spicy food.",
+    "sentences": [
+      {
+        "thai": "เผ็ดน้อยนะครับ",
+        "romanization": "pèt nóoi ná kráp",
+        "translation": "Just a little spicy, please.",
+        "literal": "spicy little, okay, (polite particle)",
+        "words": [
+          {
+            "thai": "เผ็ด",
+            "romanization": "pèt",
+            "gloss": "spicy (hot)",
+            "partOfSpeech": "adjective",
+            "syllables": [
+              {
+                "thai": "เผ็ด",
+                "romanization": "pèt",
+                "tone": "low",
+                "toneExplanation": "high-class initial ผ + dead syllable -> low",
+                "meaning": "spicy"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "spelling_mismatch",
+                "text": "The little ็ mark shortens the เ-vowel; the word rhymes with English 'pet', not 'pate'."
+              }
+            ]
+          },
+          {
+            "thai": "น้อย",
+            "romanization": "nóoi",
+            "gloss": "little, few, a small amount",
+            "partOfSpeech": "adjective",
+            "syllables": [
+              {
+                "thai": "น้อย",
+                "romanization": "nóoi",
+                "tone": "high",
+                "toneExplanation": "low-class initial น + live syllable + mai tho -> high",
+                "meaning": "little"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "common_phrase",
+                "text": "เผ็ดน้อย literally 'spicy little' is the standard way to order food mildly spicy; the opposite is เผ็ดมาก."
+              }
+            ]
+          },
+          {
+            "thai": "นะ",
+            "romanization": "ná",
+            "gloss": "softening particle (okay?)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "นะ",
+                "romanization": "ná",
+                "tone": "high",
+                "toneExplanation": "low-class initial น + dead syllable (short vowel) -> high",
+                "meaning": "softening particle"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "particle",
+                "text": "Softens a request into something friendly, a bit like adding 'okay?' or 'please' at the end."
+              }
+            ]
+          },
+          {
+            "thai": "ครับ",
+            "romanization": "kráp",
+            "gloss": "polite particle (male speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ครับ",
+                "romanization": "kráp",
+                "tone": "high",
+                "toneExplanation": "low-class initial ค + dead syllable (short vowel) -> high",
+                "meaning": "polite particle"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "pronunciation",
+                "text": "Written with the vowel -ั- but spoken kráp; in fast speech it often sounds like 'káp'."
+              }
+            ]
+          }
+        ],
+        "notes": [
+          {
+            "kind": "register",
+            "text": "A polite, everyday way to customize an order in a restaurant - no verb is needed, just the adjective plus นะครับ."
+          }
+        ]
+      },
+      {
+        "thai": "ผมกินเผ็ดไม่ค่อยเก่ง",
+        "romanization": "pǒm gin pèt mâi kôoi gèng",
+        "translation": "I'm not very good at eating spicy food.",
+        "literal": "I eat spicy not very skilled",
+        "words": [
+          {
+            "thai": "ผม",
+            "romanization": "pǒm",
+            "gloss": "I, me (male speaker)",
+            "partOfSpeech": "pronoun",
+            "syllables": [
+              {
+                "thai": "ผม",
+                "romanization": "pǒm",
+                "tone": "rising",
+                "toneExplanation": "high-class initial ผ + live syllable -> rising",
+                "meaning": "I (male)"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "register",
+                "text": "Used only by male speakers; a woman would say ดิฉัน or ฉัน."
+              }
+            ]
+          },
+          {
+            "thai": "กิน",
+            "romanization": "gin",
+            "gloss": "to eat",
+            "partOfSpeech": "verb",
+            "syllables": [
+              {
+                "thai": "กิน",
+                "romanization": "gin",
+                "tone": "mid",
+                "toneExplanation": "mid-class initial ก + live syllable -> mid",
+                "meaning": "eat"
+              }
+            ],
+            "notes": []
+          },
+          {
+            "thai": "เผ็ด",
+            "romanization": "pèt",
+            "gloss": "spicy food; spicy",
+            "partOfSpeech": "adjective",
+            "syllables": [
+              {
+                "thai": "เผ็ด",
+                "romanization": "pèt",
+                "tone": "low",
+                "toneExplanation": "high-class initial ผ + dead syllable -> low",
+                "meaning": "spicy"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "grammar",
+                "text": "Here the adjective stands alone as the object of กิน - 'eat spicy (things)'."
+              }
+            ]
+          },
+          {
+            "thai": "ไม่",
+            "romanization": "mâi",
+            "gloss": "not",
+            "partOfSpeech": "adverb",
+            "syllables": [
+              {
+                "thai": "ไม่",
+                "romanization": "mâi",
+                "tone": "falling",
+                "toneExplanation": "low-class initial ม + live syllable + mai ek -> falling",
+                "meaning": "not"
+              }
+            ],
+            "notes": []
+          },
+          {
+            "thai": "ค่อย",
+            "romanization": "kôoi",
+            "gloss": "very, really (used with ไม่)",
+            "partOfSpeech": "adverb",
+            "syllables": [
+              {
+                "thai": "ค่อย",
+                "romanization": "kôoi",
+                "tone": "falling",
+                "toneExplanation": "low-class initial ค + live syllable + mai ek -> falling",
+                "meaning": "very (in negatives)"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "compound",
+                "text": "ไม่ค่อย + adjective means 'not very / not really' - a gentle way to say no, softer than plain ไม่."
+              }
+            ]
+          },
+          {
+            "thai": "เก่ง",
+            "romanization": "gèng",
+            "gloss": "good at, skilled",
+            "partOfSpeech": "adjective",
+            "syllables": [
+              {
+                "thai": "เก่ง",
+                "romanization": "gèng",
+                "tone": "low",
+                "toneExplanation": "mid-class initial ก + live syllable + mai ek -> low",
+                "meaning": "skilled"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "idiom",
+                "text": "Thai treats tolerating chili as a skill: กินเผ็ดเก่ง = 'can handle spicy food well'. English wouldn't call this being 'good at' eating."
+              }
+            ]
+          }
+        ],
+        "notes": [
+          {
+            "kind": "grammar",
+            "text": "Thai word order puts the ability phrase last: subject + verb + object + ไม่ค่อยเก่ง."
+          }
+        ]
+      }
+    ],
+    "notes": [
+      {
+        "kind": "culture",
+        "text": "Explaining your chili tolerance like this is very common for foreigners and Thais alike; saying เผ็ดน้อย is usually enough for the kitchen."
+      }
+    ]
+  },
+  {
+    "speaker": "พนักงาน (waitress/staff)",
+    "thai": "ได้ค่ะ แล้วรับน้ำอะไรดีคะ",
+    "translation": "Sure. And what would you like to drink?",
+    "sentences": [
+      {
+        "thai": "ได้ค่ะ",
+        "romanization": "dâi kâ",
+        "translation": "Sure, no problem.",
+        "literal": "can/able + (female polite particle)",
+        "words": [
+          {
+            "thai": "ได้",
+            "romanization": "dâi",
+            "gloss": "can; okay, sure",
+            "partOfSpeech": "verb",
+            "syllables": [
+              {
+                "thai": "ได้",
+                "romanization": "dâi",
+                "tone": "falling",
+                "toneExplanation": "mid-class initial ด + live syllable + mai tho -> falling",
+                "meaning": "can; okay"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "common_phrase",
+                "text": "On its own, ได้ is the everyday way to say 'sure', 'okay', 'that works' when agreeing to a request."
+              }
+            ]
+          },
+          {
+            "thai": "ค่ะ",
+            "romanization": "kâ",
+            "gloss": "(polite particle, female speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ค่ะ",
+                "romanization": "kâ",
+                "tone": "falling",
+                "toneExplanation": "low-class initial ค + dead syllable + mai ek -> falling",
+                "meaning": "polite particle"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "particle",
+                "text": "Falling-tone ค่ะ ends statements; the same word is written and said คะ (high tone) at the end of a question, as in the next sentence."
+              }
+            ]
+          }
+        ],
+        "notes": []
+      },
+      {
+        "thai": "แล้วรับน้ำอะไรดีคะ",
+        "romanization": "láew ráp náam à-rai dii ká",
+        "translation": "And what would you like to drink?",
+        "literal": "and take water what good (question particle)",
+        "words": [
+          {
+            "thai": "แล้ว",
+            "romanization": "láew",
+            "gloss": "and then; so",
+            "partOfSpeech": "conjunction",
+            "syllables": [
+              {
+                "thai": "แล้ว",
+                "romanization": "láew",
+                "tone": "high",
+                "toneExplanation": "low-class initial ล + live syllable + mai tho -> high",
+                "meaning": "and then"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "grammar",
+                "text": "Here it links to the previous turn ('and then...'); elsewhere แล้ว after a verb marks a completed action, so don't assume it always means 'already'."
+              }
+            ]
+          },
+          {
+            "thai": "รับ",
+            "romanization": "ráp",
+            "gloss": "to take, to receive; to have (an order)",
+            "partOfSpeech": "verb",
+            "syllables": [
+              {
+                "thai": "รับ",
+                "romanization": "ráp",
+                "tone": "high",
+                "toneExplanation": "low-class initial ร + dead syllable (short vowel) -> high",
+                "meaning": "take, receive"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "register",
+                "text": "In restaurants รับ is the polite way staff say 'have/order', like 'what will you be having?'"
+              }
+            ]
+          },
+          {
+            "thai": "น้ำ",
+            "romanization": "náam",
+            "gloss": "water; drink",
+            "partOfSpeech": "noun",
+            "syllables": [
+              {
+                "thai": "น้ำ",
+                "romanization": "náam",
+                "tone": "high",
+                "toneExplanation": "low-class initial น + live syllable + mai tho -> high",
+                "meaning": "water"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "pronunciation",
+                "text": "Written with the short vowel sign ำ but pronounced long: náam."
+              },
+              {
+                "kind": "no_equivalent",
+                "text": "น้ำ covers 'water' and, as here, 'something to drink' in general."
+              }
+            ]
+          },
+          {
+            "thai": "อะไร",
+            "romanization": "à-rai",
+            "gloss": "what",
+            "partOfSpeech": "question_word",
+            "syllables": [
+              {
+                "thai": "อะ",
+                "romanization": "à",
+                "tone": "low",
+                "toneExplanation": "mid-class initial อ + dead syllable -> low",
+                "meaning": "(first syllable)"
+              },
+              {
+                "thai": "ไร",
+                "romanization": "rai",
+                "tone": "mid",
+                "toneExplanation": "low-class initial ร + live syllable -> mid",
+                "meaning": "(second syllable)"
+              }
+            ],
+            "notes": []
+          },
+          {
+            "thai": "ดี",
+            "romanization": "dii",
+            "gloss": "good",
+            "partOfSpeech": "adjective",
+            "syllables": [
+              {
+                "thai": "ดี",
+                "romanization": "dii",
+                "tone": "mid",
+                "toneExplanation": "mid-class initial ด + live syllable -> mid",
+                "meaning": "good"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "idiom",
+                "text": "...อะไรดี literally 'what would be good?' is the standard friendly way to ask someone to choose."
+              }
+            ]
+          },
+          {
+            "thai": "คะ",
+            "romanization": "ká",
+            "gloss": "(polite question particle, female speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "คะ",
+                "romanization": "ká",
+                "tone": "high",
+                "toneExplanation": "low-class initial ค + dead syllable (short vowel) -> high",
+                "meaning": "polite particle"
+              }
+            ],
+            "notes": []
+          }
+        ],
+        "notes": [
+          {
+            "kind": "register",
+            "text": "Typical polite service speech: the staff member uses female particles ค่ะ/คะ and softens the question with ดี rather than asking bluntly."
+          }
+        ]
+      }
+    ],
+    "notes": []
+  },
+  {
+    "speaker": "ลูกค้า (customer)",
+    "thai": "ขอน้ำเปล่าขวดหนึ่งครับ ทั้งหมดเท่าไหร่ครับ",
+    "translation": "Could I have a bottle of water, please? How much is it altogether?",
+    "sentences": [
+      {
+        "thai": "ขอน้ำเปล่าขวดหนึ่งครับ",
+        "romanization": "kǒo nám bplào kùat nùeng kráp",
+        "translation": "Could I have one bottle of plain water, please.",
+        "literal": "request plain-water bottle one (polite particle)",
+        "words": [
+          {
+            "thai": "ขอ",
+            "romanization": "kǒo",
+            "gloss": "may I have / I'd like (request)",
+            "partOfSpeech": "verb",
+            "syllables": [
+              {
+                "thai": "ขอ",
+                "romanization": "kǒo",
+                "tone": "rising",
+                "toneExplanation": "high-class initial ข + live syllable -> rising",
+                "meaning": "to ask for"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "common_phrase",
+                "text": "ขอ is the standard polite way to order food or drink: ขอ + item + quantity + ครับ/ค่ะ."
+              }
+            ]
+          },
+          {
+            "thai": "น้ำเปล่า",
+            "romanization": "nám bplào",
+            "gloss": "plain/still water",
+            "partOfSpeech": "noun",
+            "syllables": [
+              {
+                "thai": "น้ำ",
+                "romanization": "nám",
+                "tone": "high",
+                "toneExplanation": "low-class initial น + live syllable + mai tho -> high",
+                "meaning": "water"
+              },
+              {
+                "thai": "เปล่า",
+                "romanization": "bplào",
+                "tone": "low",
+                "toneExplanation": "mid-class initial ป (cluster ปล) + live syllable + mai ek -> low",
+                "meaning": "plain, empty"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "compound",
+                "text": "Literally 'empty water' — it means ordinary drinking water, as opposed to น้ำ + a flavour (e.g. น้ำส้ม orange juice)."
+              },
+              {
+                "kind": "pronunciation",
+                "text": "น้ำ is written with a long-looking vowel but is said short and clipped: nám."
+              }
+            ]
+          },
+          {
+            "thai": "ขวด",
+            "romanization": "kùat",
+            "gloss": "bottle (classifier)",
+            "partOfSpeech": "classifier",
+            "syllables": [
+              {
+                "thai": "ขวด",
+                "romanization": "kùat",
+                "tone": "low",
+                "toneExplanation": "high-class initial ข + dead syllable -> low",
+                "meaning": "bottle"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "classifier",
+                "text": "ขวด is both the noun 'bottle' and the counting word for bottled drinks."
+              },
+              {
+                "kind": "pronunciation",
+                "text": "The ว in ขวด is not a separate syllable; it just rounds the ข, giving kùat."
+              }
+            ]
+          },
+          {
+            "thai": "หนึ่ง",
+            "romanization": "nùeng",
+            "gloss": "one",
+            "partOfSpeech": "number",
+            "syllables": [
+              {
+                "thai": "หนึ่ง",
+                "romanization": "nùeng",
+                "tone": "low",
+                "toneExplanation": "high-class initial ห (silent ห leading น) + live syllable + mai ek -> low",
+                "meaning": "one"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "grammar",
+                "text": "Thai counts as noun + classifier + number, so 'ขวดหนึ่ง' = 'one bottle'. Putting หนึ่ง after the classifier sounds casual and natural when ordering."
+              }
+            ]
+          },
+          {
+            "thai": "ครับ",
+            "romanization": "kráp",
+            "gloss": "polite particle (male speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ครับ",
+                "romanization": "kráp",
+                "tone": "high",
+                "toneExplanation": "low-class initial ค + dead syllable (short vowel) -> high",
+                "meaning": "polite ending"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "particle",
+                "text": "Used by male speakers; the female equivalent is ค่ะ, which the server uses in this dialogue."
+              }
+            ]
+          }
+        ],
+        "notes": []
+      },
+      {
+        "thai": "ทั้งหมดเท่าไหร่ครับ",
+        "romanization": "táng mòt tâo rài kráp",
+        "translation": "How much is it all together?",
+        "literal": null,
+        "words": [
+          {
+            "thai": "ทั้งหมด",
+            "romanization": "táng mòt",
+            "gloss": "all together, in total",
+            "partOfSpeech": "adverb",
+            "syllables": [
+              {
+                "thai": "ทั้ง",
+                "romanization": "táng",
+                "tone": "high",
+                "toneExplanation": "low-class initial ท + live syllable + mai tho -> high",
+                "meaning": "all, whole"
+              },
+              {
+                "thai": "หมด",
+                "romanization": "mòt",
+                "tone": "low",
+                "toneExplanation": "high-class initial ห (silent ห leading ม) + dead syllable -> low",
+                "meaning": "entirely, used up"
+              }
+            ],
+            "notes": []
+          },
+          {
+            "thai": "เท่าไหร่",
+            "romanization": "tâo rài",
+            "gloss": "how much",
+            "partOfSpeech": "question_word",
+            "syllables": [
+              {
+                "thai": "เท่า",
+                "romanization": "tâo",
+                "tone": "falling",
+                "toneExplanation": "low-class initial ท + live syllable + mai ek -> falling",
+                "meaning": "equal to, as much as"
+              },
+              {
+                "thai": "ไหร่",
+                "romanization": "rài",
+                "tone": "low",
+                "toneExplanation": "high-class initial ห (silent ห leading ร) + live syllable + mai ek -> low",
+                "meaning": "(part of 'how much')"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "spelling_mismatch",
+                "text": "Also written เท่าไร; both spellings are said the same way."
+              }
+            ]
+          },
+          {
+            "thai": "ครับ",
+            "romanization": "kráp",
+            "gloss": "polite particle (male speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ครับ",
+                "romanization": "kráp",
+                "tone": "high",
+                "toneExplanation": "low-class initial ค + dead syllable (short vowel) -> high",
+                "meaning": "polite ending"
+              }
+            ],
+            "notes": []
+          }
+        ],
+        "notes": [
+          {
+            "kind": "common_phrase",
+            "text": "ทั้งหมดเท่าไหร่ครับ/คะ is the set phrase for asking for the total bill."
+          }
+        ]
+      }
+    ],
+    "notes": [
+      {
+        "kind": "register",
+        "text": "The customer keeps every request polite by ending with ครับ — in Thai, dropping the particle when ordering can sound curt."
+      }
+    ]
+  },
+  {
+    "speaker": "พนักงาน (staff)",
+    "thai": "หกสิบห้าบาทค่ะ",
+    "translation": "Sixty-five baht.",
+    "sentences": [
+      {
+        "thai": "หกสิบห้าบาทค่ะ",
+        "romanization": "hòk-sìp-hâa bàat kâ",
+        "translation": "That's sixty-five baht.",
+        "literal": "six-ten-five baht (polite)",
+        "words": [
+          {
+            "thai": "หกสิบห้า",
+            "romanization": "hòk-sìp-hâa",
+            "gloss": "sixty-five",
+            "partOfSpeech": "number",
+            "syllables": [
+              {
+                "thai": "หก",
+                "romanization": "hòk",
+                "tone": "low",
+                "toneExplanation": "high-class initial ห + dead syllable -> low",
+                "meaning": "six"
+              },
+              {
+                "thai": "สิบ",
+                "romanization": "sìp",
+                "tone": "low",
+                "toneExplanation": "high-class initial ส + dead syllable -> low",
+                "meaning": "ten"
+              },
+              {
+                "thai": "ห้า",
+                "romanization": "hâa",
+                "tone": "falling",
+                "toneExplanation": "high-class initial ห + live syllable + mai tho -> falling",
+                "meaning": "five"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "grammar",
+                "text": "Thai numbers stack transparently: six-ten-five = 65. Once you know 1-10 you can build most numbers this way."
+              }
+            ]
+          },
+          {
+            "thai": "บาท",
+            "romanization": "bàat",
+            "gloss": "baht (Thai currency)",
+            "partOfSpeech": "noun",
+            "syllables": [
+              {
+                "thai": "บาท",
+                "romanization": "bàat",
+                "tone": "low",
+                "toneExplanation": "mid-class initial บ + dead syllable -> low",
+                "meaning": "baht"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "spelling_mismatch",
+                "text": "Final ท is pronounced as an unreleased -t, which also makes the syllable 'dead' for tone purposes."
+              }
+            ]
+          },
+          {
+            "thai": "ค่ะ",
+            "romanization": "kâ",
+            "gloss": "polite particle (female speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ค่ะ",
+                "romanization": "kâ",
+                "tone": "falling",
+                "toneExplanation": "low-class initial ค + dead syllable + mai ek -> falling",
+                "meaning": "polite particle"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "register",
+                "text": "Used by female speakers in statements; the male equivalent is ครับ (kráp), which the customer uses in this dialogue."
+              }
+            ]
+          }
+        ],
+        "notes": [
+          {
+            "kind": "common_phrase",
+            "text": "Prices are usually given as just the number + บาท + a polite particle, with no verb like 'is' or 'costs'."
+          }
+        ]
+      }
+    ],
+    "notes": []
+  },
+  {
+    "speaker": "ลูกค้า (customer)",
+    "thai": "นี่ครับ ขอบคุณมากครับ",
+    "translation": "Here you go. Thank you very much.",
+    "sentences": [
+      {
+        "thai": "นี่ครับ",
+        "romanization": "nîi kráp",
+        "translation": "Here you go.",
+        "literal": "this + (polite particle)",
+        "words": [
+          {
+            "thai": "นี่",
+            "romanization": "nîi",
+            "gloss": "this; here",
+            "partOfSpeech": "pronoun",
+            "syllables": [
+              {
+                "thai": "นี่",
+                "romanization": "nîi",
+                "tone": "falling",
+                "toneExplanation": "low-class initial น + live syllable + mai ek -> falling",
+                "meaning": "this"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "idiom",
+                "text": "Saying นี่ while handing something over is the everyday Thai equivalent of \"here you are\" - it is not a full sentence in English terms."
+              }
+            ]
+          },
+          {
+            "thai": "ครับ",
+            "romanization": "kráp",
+            "gloss": "polite particle (male speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ครับ",
+                "romanization": "kráp",
+                "tone": "high",
+                "toneExplanation": "low-class initial ค + dead syllable (short vowel) -> high",
+                "meaning": "polite particle"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "pronunciation",
+                "text": "Written with a vowel that suggests \"kráp\", but in fast speech it is usually shortened to \"káp\" with the ร dropped."
+              },
+              {
+                "kind": "register",
+                "text": "Used by male speakers; female speakers say ค่ะ/คะ, as the waitress does in this dialogue."
+              }
+            ]
+          }
+        ],
+        "notes": [
+          {
+            "kind": "common_phrase",
+            "text": "This two-word line is how you hand over money or an object politely - very high frequency in shops and restaurants."
+          }
+        ]
+      },
+      {
+        "thai": "ขอบคุณมากครับ",
+        "romanization": "kòop-kun mâak kráp",
+        "translation": "Thank you very much.",
+        "literal": null,
+        "words": [
+          {
+            "thai": "ขอบคุณ",
+            "romanization": "kòop-kun",
+            "gloss": "thank you",
+            "partOfSpeech": "verb",
+            "syllables": [
+              {
+                "thai": "ขอบ",
+                "romanization": "kòop",
+                "tone": "low",
+                "toneExplanation": "high-class initial ข + dead syllable -> low",
+                "meaning": "edge; rim (no separate meaning here)"
+              },
+              {
+                "thai": "คุณ",
+                "romanization": "kun",
+                "tone": "mid",
+                "toneExplanation": "low-class initial ค + live syllable -> mid",
+                "meaning": "you (in this fixed phrase)"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "compound",
+                "text": "A fixed compound; คุณ on its own means \"you\", but you cannot swap it out here."
+              }
+            ]
+          },
+          {
+            "thai": "มาก",
+            "romanization": "mâak",
+            "gloss": "very; a lot",
+            "partOfSpeech": "adverb",
+            "syllables": [
+              {
+                "thai": "มาก",
+                "romanization": "mâak",
+                "tone": "falling",
+                "toneExplanation": "low-class initial ม + dead syllable (long vowel) -> falling",
+                "meaning": "much; very"
+              }
+            ],
+            "notes": [
+              {
+                "kind": "grammar",
+                "text": "Intensifiers like มาก follow the word they modify in Thai, the opposite of English \"very\"."
+              }
+            ]
+          },
+          {
+            "thai": "ครับ",
+            "romanization": "kráp",
+            "gloss": "polite particle (male speaker)",
+            "partOfSpeech": "particle",
+            "syllables": [
+              {
+                "thai": "ครับ",
+                "romanization": "kráp",
+                "tone": "high",
+                "toneExplanation": "low-class initial ค + dead syllable (short vowel) -> high",
+                "meaning": "polite particle"
+              }
+            ],
+            "notes": []
+          }
+        ],
+        "notes": []
+      }
+    ],
+    "notes": [
+      {
+        "kind": "register",
+        "text": "The customer keeps ครับ on both short sentences; dropping it would sound curt to restaurant staff."
+      }
+    ]
+  }
+]

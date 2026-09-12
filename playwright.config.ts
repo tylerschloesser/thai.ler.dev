@@ -33,6 +33,10 @@ const baseURL = remote ?? 'http://localhost:4173'
 
 export default defineConfig({
   testDir: 'e2e',
+  // Playwright's default testMatch also claims *.test.ts, which is vitest's
+  // extension. Pin it to *.spec.ts so the two runners cannot fight over a
+  // file (e.g. a vitest test living next to the mock it exercises).
+  testMatch: '**/*.spec.ts',
   fullyParallel: true,
   retries: remote ? 1 : 0,
   reporter: 'list',
