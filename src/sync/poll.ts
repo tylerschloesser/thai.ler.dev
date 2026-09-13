@@ -43,8 +43,41 @@ function linesRemain(record: AnnotationRecord): boolean {
   return record.lines.some((line) => line === null)
 }
 
-function isTerminal(record: AnnotationRecord): boolean {
-  return record.run.state === 'done' || record.run.state === 'cancelled'
+/** Whether `run.leaseUntil` is still in the future - a runner is genuinely holding it right now. */
+function hasLiveLease(
+  run: Pick<AnnotationRecord['run'], 'leaseUntil'>,
+  nowMs: number,
+): boolean {
+  return run.leaseUntil !== null && Date.parse(run.leaseUntil) > nowMs
+}
+
+/**
+ * A record is only *actually* finished once no runner can still be holding
+ * it: `done`/`cancelled` alone isn't enough, because `POST
+ * /api/annotation/cancel` deliberately leaves a *live* lease untouched
+ * (`api/annotation/cancel.ts`) so the in-flight step's own final write -
+ * which persists whatever lines it actually finished - still has a chance
+ * to land before the client stops polling. Stopping on the bare
+ * `state: 'cancelled'` used to mean those already-completed lines never
+ * reached the UI until some later, unrelated pull.
+ *
+ * Takes just the `run` fields (not a whole `AnnotationRecord`) so callers
+ * that only have those two values on hand - e.g. React state/props, or a
+ * `useEffect` dependency list, which must stay primitives rather than a
+ * whole object that changes identity on every poll - don't need to
+ * construct a fake record just to ask.
+ *
+ * Exported so `src/features/dialogues/DialogueView.tsx`'s resume-on-open
+ * watch effect can use the exact same rule for its own guard, rather than
+ * a second hand-written `state ∈ {...}` list that could drift from this
+ * one (which is precisely the bug this was added to fix).
+ */
+export function isTerminal(
+  run: Pick<AnnotationRecord['run'], 'state' | 'leaseUntil'>,
+  nowMs: number,
+): boolean {
+  const finished = run.state === 'done' || run.state === 'cancelled'
+  return finished && !hasLiveLease(run, nowMs)
 }
 
 /**
@@ -98,15 +131,24 @@ export function watchAnnotation(id: string, deps: PollDeps = {}): () => void {
     }
     await mergeRemoteAnnotation(record)
 
-    if (isTerminal(record)) {
+    const nowMs = now()
+
+    if (isTerminal(record.run, nowMs)) {
       stopWatcher(id)
       return
     }
 
+    // A cancelled record with a still-live lease is mid-flight, not
+    // stalled - never resume it (that would race the very runner whose
+    // final write we're waiting on). Keep polling at the normal cadence
+    // instead; the next tick(s) will pick up the runner's own progress and
+    // eventually its terminal write (see `isTerminal` above).
+    if (record.run.state === 'cancelled') return
+
     const stalled = isLeaseStalled(
       record.run,
       record.updatedAt,
-      now(),
+      nowMs,
       staleAfterMs,
     )
 
@@ -120,7 +162,7 @@ export function watchAnnotation(id: string, deps: PollDeps = {}): () => void {
           const outcome = await api.resumeAnnotation(id)
           if (outcome.status === 'started') {
             await mergeRemoteAnnotation(outcome.record)
-            if (isTerminal(outcome.record)) stopWatcher(id)
+            if (isTerminal(outcome.record.run, now())) stopWatcher(id)
           }
         } catch {
           // Leave it stalled; the next tick retries once the cooldown passes.

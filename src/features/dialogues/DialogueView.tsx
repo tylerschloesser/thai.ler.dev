@@ -12,7 +12,7 @@ import { getSetting, setSetting } from '../../db/settings'
 import type { Settings } from '../../db/settings'
 import { exportSnapshot } from '../../db/snapshot'
 import { splitDialogue } from '../../llm/split'
-import { watchAnnotation } from '../../sync/poll'
+import { isTerminal, watchAnnotation } from '../../sync/poll'
 import {
   AlertDialog,
   Button,
@@ -128,19 +128,29 @@ export function DialogueView({ dialogueId }: DialogueViewProps) {
   // Toasts each newly-failed line exactly once, keyed by the exact error
   // text so a line that fails again with a different message re-toasts
   // (docs/plans/P0.md §4.6 `errors` spec) but a re-render never duplicates one.
-  // Resume-on-open (PLAN.MD §4.2/§4.5): while the current annotation's run
-  // is `queued`/`running`, watch it — `src/sync/poll.ts`'s `watchAnnotation`
-  // polls `GET /api/annotation` and, if the lease looks stalled, calls
-  // `POST /api/annotation/resume` itself. This is the entire mechanism for
-  // "come back later, on any browser, and a stuck job finishes" - nothing
-  // else needs to happen on mount.
+  // Resume-on-open (PLAN.MD §4.2/§4.5): watch the current annotation
+  // whenever it isn't yet *actually* terminal — `src/sync/poll.ts`'s
+  // `isTerminal` (the same predicate `watchAnnotation`'s own poll loop
+  // uses to decide when to stop) rather than a second hand-written
+  // `state ∈ {queued, running}` list here, which drifted from it once
+  // before: `POST /api/annotation/cancel` leaves a live lease untouched so
+  // the in-flight runner's own final write (with whatever lines it
+  // actually finished) can still land, so a `cancelled` record with a live
+  // lease is not terminal yet and must keep being watched. Depends on the
+  // primitive `run.state`/`run.leaseUntil` fields, not the whole
+  // `annotation` object (which changes identity on every poll), so the
+  // effect doesn't tear down and recreate its `setInterval` on every tick
+  // — only when the terminal-relevant fields themselves change. Still
+  // unsubscribes (`watchAnnotation`'s returned cleanup, i.e. `stopWatcher`)
+  // on unmount or once those dependencies change, same as any effect.
   const annotationId = annotation?.id
   const runState = annotation?.run.state
+  const leaseUntil = annotation?.run.leaseUntil ?? null
   useEffect(() => {
-    if (!annotationId) return
-    if (runState !== 'queued' && runState !== 'running') return
+    if (!annotationId || !runState) return
+    if (isTerminal({ state: runState, leaseUntil }, Date.now())) return
     return watchAnnotation(annotationId)
-  }, [annotationId, runState])
+  }, [annotationId, runState, leaseUntil])
 
   const toastedErrorsRef = useRef<Set<string>>(new Set())
   useEffect(() => {

@@ -90,4 +90,35 @@ describe('POST /api/annotation/cancel', () => {
     const body = await jsonBody(res)
     expect(body.run.state).toBe('done')
   })
+
+  it('leaves leaseUntil untouched when a runner still visibly holds it (live lease)', async () => {
+    const liveLeaseUntil = new Date(Date.now() + 60_000).toISOString()
+    await seed(
+      baseAnnotation({
+        run: { ...LEGACY_RUN, state: 'running', leaseUntil: liveLeaseUntil },
+      }),
+    )
+    const res = await POST(request('a1'))
+    expect(res.status).toBe(200)
+    const body = await jsonBody(res)
+    expect(body.run.state).toBe('cancelled')
+    // Clearing it here would make the record look immediately terminal to
+    // `src/sync/poll.ts` before the in-flight step's own final write (which
+    // persists whatever lines it actually finished) ever lands.
+    expect(body.run.leaseUntil).toBe(liveLeaseUntil)
+  })
+
+  it('clears leaseUntil when no runner holds a live lease (already expired)', async () => {
+    const expiredLeaseUntil = new Date(Date.now() - 60_000).toISOString()
+    await seed(
+      baseAnnotation({
+        run: { ...LEGACY_RUN, state: 'running', leaseUntil: expiredLeaseUntil },
+      }),
+    )
+    const res = await POST(request('a1'))
+    expect(res.status).toBe(200)
+    const body = await jsonBody(res)
+    expect(body.run.state).toBe('cancelled')
+    expect(body.run.leaseUntil).toBeNull()
+  })
 })
