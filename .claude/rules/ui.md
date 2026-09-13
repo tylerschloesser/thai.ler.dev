@@ -62,9 +62,34 @@ dark mode rather than reusing the light-mode hex.
 
 ## Empty / error states
 
-Use the shared `EmptyState` component for "no dialogues" / "no API key
-configured"; surface pipeline and import/export errors through the root
-`Toast` provider, not ad hoc inline banners.
+Use the shared `EmptyState` component for "no dialogues yet"
+(`DialogueList.tsx`); surface annotation and import/export errors through
+the root `Toast` provider, not ad hoc inline banners. There is no
+"no API key configured" state — the Anthropic key lives only in the
+server's environment, never in Settings.
+
+## Annotation status (`AnnotateStatus`, `src/features/annotate/`)
+
+`AnnotateStatus` renders one of five states (`AnnotateState` in
+`useAnnotate.ts`): `running`, `stalled`, `failed`, `cancelled`, `complete`.
+The state + progress text sits in a single `<p aria-live="polite">` so a
+screen reader announces a transition (e.g. `running` → `stalled`, or a poll
+landing on `complete`) without the caller wiring up its own live region.
+Cancel shows only in `running`; Retry shows in `failed`, `cancelled`, and
+`stalled` (all three are "re-run the not-yet-successful lines" from the
+user's point of view, even though only `failed` means the server considers
+the job done).
+
+## Sync section (`SyncStatus`, `src/features/settings/`)
+
+Settings' "Sync" section is a labelled `<section aria-label="Sync">`
+containing a `<dl>` status pair (last pull as relative time, pending
+pushes), an inline error line when the last sync attempt failed, and two
+actions: "Sync now" (manual `useSync().syncNow()`) and "Rebuild sync index"
+(`POST /api/sync/manifest/rebuild` then a fresh pull) — maintenance for
+when the manifest and the record blobs drift. Disable each button while its
+own action is in flight (`isSyncing`/`isRebuilding`) rather than disabling
+the whole section.
 
 ## Router file conventions
 

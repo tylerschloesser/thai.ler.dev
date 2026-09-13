@@ -201,14 +201,32 @@ Infinity` — live on Vercel, always `Infinity` locally (`STEP_BUDGET_MS`/the
    anything else. Flush (write the record, not the manifest) when the last
    flush is more than `FLUSH_EVERY_MS` (25s) old, on every line error, and
    at the very end — a 20-line job costs ~6–8 record writes, not 20.
-6. At the end: if lines remain and the run wasn't cancelled, write a
+6. **"Attempted", not "still null", decides the hop** (an M1 bug found and
+   fixed in M3a — PLAN.MD §10 "Corrected during M3"). A pending index counts
+   as attempted the moment its provider call returns, success or
+   `AnnotateError` — `pump()` returns only the indices that were never even
+   started this step (cut off by the deadline/reserve, or by
+   cancellation before they were popped from the queue). At the end: if that
+   "never attempted" list is non-empty and the run wasn't cancelled, write a
    visibly-stalled record (`leaseUntil = now`) and, if `run.hops <
 MAX_HOPS` (3), call `hop()` once — its result (true/false) is not itself
-   checked; a failed hop just leaves the job stalled for resume-on-open.
-   Otherwise (`done` or `cancelled`): `state`, `status` (`complete` iff
-   every line is non-null), final record write **with** a manifest update
-   (`{ manifest: true }` — the only other manifest write besides job
-   creation).
+   checked; a failed hop just leaves the job stalled for resume-on-open. A
+   line that was attempted but **failed** does _not_ trigger a hop even
+   though it's still `null` — it falls through to the terminal branch below
+   with its message in `lineErrors[i]`, so a step that ran out of hops (or
+   never needed one) can still end `done`/`partial` and offer Retry, instead
+   of being left `running` with an expired lease forever.
+7. Otherwise (`done` or `cancelled`): `state`, `status` (`complete` iff
+   every line is non-null, else `partial`), final record write **with** a
+   manifest update (`{ manifest: true }` — the only other manifest write
+   besides job creation). A failure that isn't about any one line at all
+   (the dialogue is missing, or `createProvider` throws — e.g.
+   `MissingApiKeyError`) never reaches the per-line loop: `stepLevelFailure()`
+   writes `run.state: 'done'`, `run.lastError: <message>`, `leaseUntil: null`
+   directly (with a manifest update) and returns — a step-level problem can
+   never be fixed by hopping, so it always ends the job rather than leaving
+   it stalled. `run.lastError` is exclusively for this case; a per-line
+   failure only ever lives in `lineErrors[i]`, never in `run.lastError`.
 
 `api/_lib/hop.ts`'s `hop(deps, annotationId)`: `POST
 ${base}/api/annotation/step?id=`, where `base` is `https://$VERCEL_URL` if

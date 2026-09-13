@@ -9,52 +9,64 @@ paths:
 # Testing rules
 
 `e2e/` (Playwright specs, `fixtures.ts`, `mocks/anthropic.ts`, `live/`)
-plus `playwright.config.ts`/`vitest.config.ts` at the repo root. See
-docs/plans/P0.md §4.6 for the P0 spec list and PLAN.MD §4.8 for the P1 spec
-table (not all of it exists yet — M1/M2 added `api/**/*.test.ts`,
-`src/sync/**/*.test.ts`, `src/db/**/*.test.ts` coverage for the Dexie v2
-upgrade/outbox/`mergeRemote*`, and `scripts/sync-integration.test.ts`; the
-Playwright spec rewrite for the server-backed job model is M3).
+plus `playwright.config.ts`/`vitest.config.ts` at the repo root. Annotation
+runs server-side as of M3 — there is no Vitest count in this file; it drifts
+too fast to keep accurate here, run `pnpm test` to see it.
 
-## Mock contract (current, pre-M3)
+## Mock contract (`e2e/fixtures.ts`)
 
-The Anthropic call still runs in the browser today, so `e2e/fixtures.ts`
-still installs a Playwright route on `https://api.anthropic.com/**`: any
-request to `/v1/messages` is served the fixture-backed SSE mock
-(`anthropicMockRoute` from `e2e/mocks/anthropic.ts`); any other
-`api.anthropic.com` path, or an unmocked real hit, throws and fails the
-test (hard rule 2). Because `vite.config.ts` dropped `envPrefix` in M0, the
-P0 browser client has no build-time key, so `annotate`/`errors`/
-`persistence` call the `seedApiKey` fixture (seeds a dummy, non-`sk-ant-`
-`apiKeyOverride` setting via `seed`) before triggering an annotation — the
-dummy value never leaves the browser since the route above intercepts
-every request regardless of which key signed it. This whole mock + dummy
-key path is temporary: M1 added the server-side fake provider (below),
-and M3 moves annotation server-side and deletes the browser client, the
-`apiKeyOverride` setting, and `seedApiKey` along with it.
+The Anthropic call never reaches the browser: `api/_lib/providers/fake.ts`
+plays its role, selected per job via the `thai_model` cookie (`fake` or
+`fake-slow`) every test context carries by default (`fake`). `e2e/fixtures.ts`
+installs a Playwright route on `https://api.anthropic.com/**` as a **guard**,
+not a mock — any request to it aborts and throws, failing the test
+immediately (hard rule 2). There is no `apiKeyOverride`/`seedApiKey` fixture
+and no `anthropicMockRoute`: the browser has no Anthropic client to seed a
+key into (`src/llm/client.ts` is deleted).
 
-## Server-side fake provider and cookies (M1)
+Every test context also carries a `thai_ns` cookie (`e2e-<sanitized testId>`,
+`sanitizeNs` in `fixtures.ts`), which becomes the server's Blob-store key
+prefix (`api/_lib/context.ts`) — tests never see each other's dialogues or
+annotations even though they share one `memory` store. The `context`
+fixture's teardown calls `DELETE /api/test/namespace?ns=` through the
+context's own `request` (so it carries the same cookie jar) after every
+test.
 
-`api/**` handler tests (`api/*.test.ts`, `api/_lib/**/*.test.ts`) run the
-real handlers against the `memory` `BlobStore`: `beforeEach` calls
-`resetMemoryStoreForTests()` (`api/_lib/store/memory.ts`) and sets
-`process.env.BLOB_BACKEND = 'memory'`, `ALLOW_TEST_MODE = '1'`,
-`MODEL_PROVIDER = 'fake'`, then builds requests with a real `Request` and a
-`cookie` header carrying a unique `thai_ns` (memory store isolation between
-tests in the same process) plus whichever of `thai_model`,
-`thai_fake_error`, `thai_step_budget_ms`, `thai_fake_delay_ms` the test
-needs (see `.claude/rules/api.md`'s cookie table). `thai_fake_delay_ms`
-exists specifically because a tiny `thai_step_budget_ms` shrinks
-`lineReserveMs` too, so without a forced per-line delay a fake-provider job
-can finish in a single step even under a 1-2 second budget — `job-hop`/
-`job-cancel`-style tests need the delay to make the multi-step behavior
-observable at all.
+Fixtures (`e2e/fixtures.ts`):
 
-`e2e/fixtures.ts` will gain a `seedServer(snapshot)` fixture (`POST
-/api/test/seed`, `ALLOW_TEST_MODE` only) once the Playwright spec rewrite
-(M3) needs server-owned test state (stalled jobs, remote-only records);
-until then, `window.__thai.importSnapshot` covers everything the fast
-suite seeds.
+- `seed(snapshot)`: `window.__thai.importSnapshot` then `window.__thai.sync
+.push()` — seeds local IndexedDB and pushes it to the server, for state a
+  test wants to already exist both locally and remotely.
+- `seedServer(snapshot)`: `POST /api/test/seed` (`ALLOW_TEST_MODE` only) —
+  writes server-owned state directly, for a record that only makes sense as
+  already existing remotely (a stalled job, a record with no local copy).
+- `fakeError(kind | null)`: sets/clears `thai_fake_error` — the fake
+  provider fails every line with that `AnnotateErrorKind` while set.
+- `fakeDelay(ms | null)`: sets/clears `thai_fake_delay_ms` — overrides the
+  fake provider's per-line delay (0ms for `fake`, 300ms for `fake-slow`).
+- `stepBudget(ms | null)`: sets/clears `thai_step_budget_ms` — caps the
+  runner's per-step budget, forcing hops.
+- `newContextSameNs()`: opens a second, independent `BrowserContext`
+  carrying the same `thai_ns`/`thai_model` cookies and Anthropic guard as
+  the test's primary context — simulates "a different browser" pulling from
+  the same server-side namespace. Auto-closed; the namespace itself is
+  still only deleted once, by the primary `context` fixture's teardown.
+
+See `.claude/rules/api.md`'s cookie table for the full cookie contract
+(shared by these fixtures and by `api/**` handler tests).
+
+## Current spec list (fast suite, as of M3a)
+
+`e2e/{smoke,theme,deep-link,word-popover,library,annotate,persistence,
+errors,settings,api-health,bundle}.spec.ts` (11 specs) plus
+`e2e/live/health.spec.ts` (`@live`, run separately — see below). `bundle`
+reads the built `dist/assets/*.js` with plain `node:fs` (no page/network)
+and asserts no Anthropic key, no `vercel_blob_rw_` token, no
+`dangerouslyAllowBrowser`, and no `api.anthropic.com` reference ever reaches
+the client bundle — it's skipped when `PLAYWRIGHT_BASE_URL` is set (no local
+`dist/` to read against a remote target). More job-lifecycle specs
+(survives-tab-close, hop, resume-on-open, cancel) are still to come; don't
+describe them as existing until they land.
 
 ## `scripts/sync-integration.test.ts` (M1↔M2 acceptance, PLAN.MD §5)
 
@@ -116,8 +128,9 @@ longer, and `extraHTTPHeaders` adds `x-vercel-protection-bypass` /
 `x-vercel-set-bypass-cookie` so requests pass Vercel Authentication.
 `e2e/api-health.spec.ts` (fast) and `e2e/live/health.spec.ts` (`@live`)
 both assert `GET /api/health`'s shape and that unknown `/api/*` is a JSON
-`404`, not the SPA's `index.html`. `E2E_REAL_MODEL=1` (a real-model smoke)
-is a P1/M4 addition, not yet wired up.
+`404`, not the SPA's `index.html`. Only `live/health.spec.ts` exists today;
+`E2E_REAL_MODEL=1` (a real-model smoke) and the rest of the `@live` suite
+(`annotate`, `hop`, `sync`) are M4 additions, not yet wired up.
 
 ## Vitest includes
 

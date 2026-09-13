@@ -7,45 +7,34 @@ paths:
 
 # LLM pipeline rules
 
-Layout: `src/llm/{provider,schema,prompt,split,annotateLine,client,pipeline}.ts`,
-fixtures in `src/fixtures/`, one-off generator at `scripts/gen-fixture.ts`.
-`src/llm/provider.ts`'s `LineProvider` interface (`annotate({ model, lines,
-lineIndex, signal?, onStart? })`) is the seam between `api/_lib/runner.ts`
-and a model backend; the two implementations
-(`api/_lib/providers/anthropic.ts` wrapping `annotateLine`, and
-`api/_lib/providers/fake.ts`) live under `api/_lib/providers/`, not here —
-see `.claude/rules/api.md` for their behavior. `onStart` fires on the
-first response event (`stream.once('streamEvent', ...)` in
-`annotateLine.ts`) — the runner's cache warm-up gate waits on it before
-fanning out the rest of a job's lines, so the dialogue-level cache
-breakpoint (below) is written before concurrent calls can race it.
-
-`src/llm/client.ts` (the P0 in-browser Anthropic client) and
-`src/llm/pipeline.ts` (its browser-side queue/resume logic) still exist and
-are still what the app actually calls today — M3 is what deletes them and
-moves annotation server-side. Everything in this file describes the target
-`annotateLine`/schema/prompt/fixture behavior, which both the legacy
-browser client and the new server providers share unchanged.
+Layout: `src/llm/{provider,schema,prompt,split,annotateLine}.ts`, fixtures
+in `src/fixtures/`, one-off generator at `scripts/gen-fixture.ts`. The
+browser has no Anthropic client at all as of M3 — `src/llm/client.ts`,
+`src/llm/pipeline.ts`, and `src/app/anthropic.ts` are deleted, and
+`e2e/bundle.spec.ts` asserts `dangerouslyAllowBrowser` and
+`api.anthropic.com` are absent from the built bundle. `src/llm/provider.ts`'s
+`LineProvider` interface (`annotate({ model, lines, lineIndex, signal?,
+onStart? })`) is the seam between `api/_lib/runner.ts` and a model backend;
+the two implementations (`api/_lib/providers/anthropic.ts` wrapping
+`annotateLine`, and `api/_lib/providers/fake.ts`) live under
+`api/_lib/providers/`, not here — see `.claude/rules/api.md` for their
+behavior. `onStart` fires on the first response event
+(`stream.once('streamEvent', ...)` in `annotateLine.ts`) — the runner's
+cache warm-up gate waits on it before fanning out the rest of a job's
+lines, so the dialogue-level cache breakpoint (below) is written before
+concurrent calls can race it.
 
 ## Models and client
 
 Model ids are exactly `claude-opus-5` (default) and `claude-sonnet-5`
 (alternative, selectable in Settings) — do not invent other id strings.
 
-**Browser client (pre-M3, still in use):** `src/llm/client.ts` constructs
-`new Anthropic({ apiKey, dangerouslyAllowBrowser: true })`; the SDK adds
-the required CORS header itself. Key resolution order: Settings override,
-then `import.meta.env.ANTHROPIC_API_KEY` — but since P1 M0 `vite.config.ts`
-has no `envPrefix` (default `VITE_` only), so that value is never inlined
-and in practice the browser client works only with a Settings override
-until M3 moves the call server-side (e2e seeds a dummy one, see
-`testing.md`).
-
-**Server client (M1, `api/_lib/providers/anthropic.ts`):** `new
+**Server client only (`api/_lib/providers/anthropic.ts`):** `new
 Anthropic({ apiKey, timeout: 90_000, maxRetries: 1 })`, built once per
 runner invocation (worst case ≈ 181s, well under the 300s function cap).
-Never `dangerouslyAllowBrowser` anywhere in `api/**` — that flag exists
-only for the P0 in-browser client and must never appear server-side.
+Delegates to `src/llm/annotateLine.ts`. Never `dangerouslyAllowBrowser`
+anywhere — that flag has no legitimate use in this codebase now that the
+Anthropic call only ever runs server-side.
 
 `scripts/gen-fixture.ts` runs in Node with a real key, against
 `api/_lib/runner.ts`'s `runStep` (memory store, the `anthropic` provider)
@@ -94,8 +83,7 @@ Per line, in this order, each a separate content block:
 Calls run per-line. The runner (`api/_lib/runner.ts`) fans out with
 `CONCURRENCY = 6`, but only after the first line's `onStart` fires (the
 warm-up gate above) so both cache breakpoints are already being written
-before the rest race in; the legacy browser pipeline used a concurrency of
-4 for the same reason at a smaller scale.
+before the rest race in.
 
 ## `PROMPT_VERSION`
 

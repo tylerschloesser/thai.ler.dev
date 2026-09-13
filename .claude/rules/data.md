@@ -26,23 +26,37 @@ other shared module: the same last-writer-wins rule backs both the client's
 `src/db/repo.ts` is the **only** write path to Dexie tables. Components and
 hooks call repo functions (`createDialogue`, `renameDialogue`,
 `softDeleteDialogue`, `listDialogues` (live), `getDialogue`, `getAnnotation`,
-`getAnnotationsByIds` (batched, for list rendering), `setCurrentAnnotation`)
-— never `db.table.put/add/delete` directly outside `repo.ts`. Every write
-bumps `updatedAt`. Settings (`src/db/settings.ts`) are the one exception:
+`getAnnotationsByIds` (batched, for list rendering), `setCurrentAnnotation`,
+`mergeRemoteDialogue`/`mergeRemoteAnnotation`/`mergeRemoteSettings`) — never
+`db.table.put/add/delete` directly outside `repo.ts`. Every write bumps
+`updatedAt`. Settings (`src/db/settings.ts`) are the one exception:
 single-key rows with defaults, not soft-deletable records, so they own
 their own `getSetting`/`setSetting`/`useSetting` API instead of living in
 `repo.ts` — but `setSetting` still calls `repo.enqueueOutbox` in the same
 transaction, same as every other write path.
 
-`createAnnotation`/`upsertAnnotationLine`/`finalizeAnnotation` are
-**`@deprecated`, removed in M3**: they back the browser-side pipeline
-(`src/llm/pipeline.ts`) only until M3 moves annotation to the server
-(`api/_lib/runner.ts`). No new caller should be added. They're intentionally
-decoupled from the outbox except at `finalizeAnnotation` (a partial,
-still-running client job has nothing useful to sync yet); remote records
-from the server (M1's `run`-bearing `AnnotationRecord`) only ever enter
-local storage through `repo.mergeRemoteAnnotation`, never through this
-trio.
+## Client-owned vs. server-owned records
+
+As of M3, annotation runs entirely server-side (`api/_lib/runner.ts`) — the
+browser-side pipeline (`src/llm/pipeline.ts`, `createAnnotation`/
+`upsertAnnotationLine`/`finalizeAnnotation`) is gone, and no local write path
+builds an `AnnotationRecord` line-by-line anymore. Records now split into two
+kinds:
+
+- **Client-owned** (`dialogues`, `settings`): written locally first (by a
+  repo function or `setSetting`), enqueued to the `outbox` in the same
+  transaction, and pushed to the server by `src/sync/push.ts`.
+- **Server-owned** (`annotations`): created and updated only by the runner
+  (`POST /api/annotate` creates the record with `run.state: 'queued'`; the
+  runner writes every subsequent line/state change). The browser never
+  writes an `AnnotationRecord` directly — it only ever receives one, via
+  `POST /api/annotate`'s response, `GET /api/annotation` polling
+  (`src/sync/poll.ts`), or a pull, and merges it in through
+  `repo.mergeRemoteAnnotation`.
+
+`mergeRemoteDialogue`/`mergeRemoteAnnotation`/`mergeRemoteSettings` are the
+**only** entry point for a remote record into local storage, for both kinds
+— see the outbox invariants below for why they never themselves enqueue.
 
 ## Schema (Dexie v2, `src/db/db.ts`)
 

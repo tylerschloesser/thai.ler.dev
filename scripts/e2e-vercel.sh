@@ -1,6 +1,6 @@
 #!/usr/bin/env sh
-# Deploy a PREVIEW (never --prod: the production alias is public and the
-# bundle embeds the Anthropic key) and run the Playwright suite against it.
+# Deploy a CLI PREVIEW (never --prod: production is deployed only by the
+# Git push after the M6 cutover) and run the @live Playwright specs against it.
 set -eu
 
 # VERCEL_AUTOMATION_BYPASS_SECRET lives here. `vercel env pull` does NOT

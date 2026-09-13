@@ -2,16 +2,14 @@
 
 A personal Thai-learning web app: paste a dialogue, run it through Claude,
 and get a layered annotation (dialogue → line → sentence → word → syllable)
-with romanization, gloss, tone, and learner notes. Everything is stored
-client-side in IndexedDB. P1 is moving the Anthropic call to `api/` Vercel
-Functions: as of M1/M2 the server core (annotate/job/sync handlers, the
-runner, Vercel Blob storage) and the client sync layer (`src/sync/`) exist,
-but until M3 wires them in, the browser still annotates by calling
-Anthropic directly, and production is not yet deployed (previews only).
+with romanization, gloss, tone, and learner notes. The Anthropic call is made
+server-side by Vercel Functions in `api/`; records live in Vercel Blob, with
+IndexedDB as the local read model synced through `src/sync`. Production is
+not yet deployed — every deploy is a Vercel **preview** (`PLAN.MD` M6).
 
 **Stack**: Vite + React 19 + TypeScript, Base UI + CSS Modules + Radix
-Colors, TanStack Router/Query/Form, Dexie (IndexedDB), `@anthropic-ai/sdk`,
-Vercel Functions + Blob, Vitest + Playwright, deployed via the Vercel CLI
+Colors, TanStack Router/Query/Form, Dexie (IndexedDB), Vercel Functions +
+Blob, `@anthropic-ai/sdk`, Vitest + Playwright, deployed via the Vercel CLI
 and Git pushes (preview only, for now).
 
 ## Commands
@@ -30,20 +28,21 @@ and Git pushes (preview only, for now).
 
 - `.claude/` — context engineering: rules, agents, permissions
 - `api/` — Vercel Functions (`_lib/` not routed) — see `.claude/rules/api.md`
-- `e2e/` — Playwright specs, fixtures, the Anthropic SSE mock, `live/` (`@live` specs)
-- `scripts/` — `e2e-vercel.sh`, `gen-fixture.ts`, `load-env.ts`, `vite-api-plugin.ts`
-- `src/` — `app/` (router, providers, theme, debug hook), `routes/`
-  (file-based), `lib/`, `styles/` + `ui/`, `db/`, `sync/`, `llm/` +
-  `fixtures/`, `features/` — see docs/plans/P0.md §3
-- `docs/plans/` — as-built plan records (`P0.md`); see `PLAN.MD` for P1
-- `public/` — static assets (favicon)
+- `e2e/` — Playwright specs, `fixtures.ts`, `mocks/`, `live/` (`@live` specs)
+- `scripts/` — `e2e-vercel.sh`, `gen-fixture.ts`, `load-env.ts`,
+  `vite-api-plugin.ts`, `smoke-runner.ts`, `sync-integration.test.ts`
+- `src/` — `app/`, `routes/` (file-based), `lib/`, `styles/` + `ui/`, `db/`,
+  `sync/`, `llm/` + `fixtures/`, `features/` — see docs/plans/P0.md §3
+- `docs/plans/` — as-built plan records; `public/` — static assets
 
 ## Hard rules
 
-1. `src/db/repo.ts` is the only write path to IndexedDB — no component or
-   hook writes to Dexie tables directly.
-2. Never call the real Anthropic API from any test; route
-   `api.anthropic.com` must always be mocked in e2e.
+1. `src/db/repo.ts` is the only write path to IndexedDB; remote records
+   enter only through `src/sync` → `repo.mergeRemote*`.
+2. Never call the real Anthropic API from any test: the server runs the
+   fake provider under test mode, the browser never talks to
+   `api.anthropic.com` (the e2e route guard fails the test), and the
+   real-model smoke (`E2E_REAL_MODEL=1`) arrives in M4.
 3. Never run `vercel --prod` or `vercel deploy --prod`; never push to
    `main`; never set `ALLOW_TEST_MODE` or `MODEL_PROVIDER=fake` in the
    `production` Vercel environment.
@@ -54,7 +53,8 @@ and Git pushes (preview only, for now).
 6. Components use semantic CSS tokens from `src/styles/tokens.css` only —
    never reference Radix color vars directly.
 7. Never pass `thinking` or `temperature` to `messages.stream` (adaptive
-   thinking is the default on Opus 5 / Sonnet 5).
+   thinking is the default on Opus 5 / Sonnet 5); the server client always
+   sets `timeout` and `maxRetries`.
 8. Bump `PROMPT_VERSION` and regenerate the fixture whenever the system
    prompt or schema changes.
 9. Commit after every verified task; push only once the full gate
@@ -70,7 +70,7 @@ and Git pushes (preview only, for now).
 | -------------------------- | ---------------------------------------------------------------------------------- | ------------------------------------------------------------- |
 | `.claude/rules/api.md`     | `api/**`, `scripts/vite-api-plugin.ts`, `scripts/load-env.ts`, `tsconfig.api.json` | Handler shape, routing, imports, BlobStore, env vars, secrets |
 | `.claude/rules/ui.md`      | `src/ui/**`, `src/features/**`, `src/styles/**`, `src/routes/**`                   | Base UI wrappers, tokens, Thai typography, tone colors        |
-| `.claude/rules/data.md`    | `src/db/**`, `src/lib/**`                                                          | Dexie schema, migrations, sync invariants, snapshot format    |
+| `.claude/rules/data.md`    | `src/db/**`, `src/lib/**`, `src/sync/**`                                           | Dexie schema, migrations, sync invariants, snapshot format    |
 | `.claude/rules/llm.md`     | `src/llm/**`, `scripts/gen-fixture.ts`, `src/fixtures/**`                          | Model IDs, structured outputs, caching, prompt versioning     |
 | `.claude/rules/testing.md` | `e2e/**`, `**/*.test.ts`, `playwright.config.ts`, `vitest.config.ts`               | Mock contract, seeding, speed budget, Vercel runs             |
 | `.claude/rules/deploy.md`  | `vercel.json`, `scripts/**`, `.env*`, `api/_lib/env.ts`                            | Git-connected reality, env vars, Blob stores, bypass secret   |

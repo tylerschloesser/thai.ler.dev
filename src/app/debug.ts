@@ -1,8 +1,6 @@
-// NOTE(M4): `installDebug()` must be called once at startup — e.g. near the
-// top of `src/main.tsx`, before `RouterProvider` mounts — so
-// `window.__thai` exists before the app (and any e2e test) can rely on it.
-// Wiring it into `main.tsx` is out of scope for M2 (that file belongs to a
-// different milestone/agent); this file just exports the function.
+// `installDebug()` is called once from `src/main.tsx`, before
+// `RouterProvider` mounts, so `window.__thai` exists before the app (and
+// any e2e test) relies on it.
 
 import { db, purgeTombstones } from '../db/db'
 import { exportSnapshot, importSnapshot } from '../db/snapshot'
