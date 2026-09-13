@@ -82,16 +82,24 @@ function messageOf(err: unknown): string {
   return err instanceof Error ? err.message : String(err)
 }
 
+/**
+ * A failure that isn't about any one line (dialogue missing, provider
+ * construction failed) always ends the job `done` with `run.lastError` set
+ * (PLAN.MD §4.4/§10 "M3" correction) - never left `running`/stalled, since
+ * no per-line hop could ever fix a step-level problem. `status`/`lines`
+ * are untouched (no line was ever attempted this step). Carries a manifest
+ * update like every other terminal write.
+ */
 async function stepLevelFailure(
   ctx: RunnerContext,
   rec: AnnotationRecord,
   message: string,
 ): Promise<void> {
-  rec.run = { ...rec.run, lastError: message, leaseUntil: null }
+  rec.run = { ...rec.run, state: 'done', lastError: message, leaseUntil: null }
   rec.updatedAt = nowIso()
   await ctx.records.putRecords(
     [{ kind: 'annotation', id: rec.id, value: rec }],
-    { manifest: false },
+    { manifest: true },
   )
 }
 
@@ -204,7 +212,17 @@ export async function runStep(
     }
   }
 
-  async function pump(initialQueue: number[]): Promise<void> {
+  /**
+   * Runs every index in `initialQueue`, honouring warm-up/concurrency/
+   * cancellation/reserve as before, and returns whichever indices were
+   * never even started this step (deadline/reserve cut them off, or
+   * cancellation stopped the loop before they were popped) - PLAN.MD §4.2
+   * step 5 / §10 "M3": an index that *was* started counts as attempted the
+   * moment its provider call returns, success or `AnnotateError`, which is
+   * exactly when `runLine` resolves - so "never popped from `queue`" and
+   * "never attempted" are the same thing here.
+   */
+  async function pump(initialQueue: number[]): Promise<number[]> {
     const queue = [...initialQueue]
     let startedAnyLine = false
     const noneSucceededYet = !rec.lines.some((line) => line !== null)
@@ -244,6 +262,7 @@ export async function runStep(
       queue.length > 0 ? Math.min(CONCURRENCY, queue.length) : 0
     const workers = Array.from({ length: workerCount }, () => worker())
     await Promise.all([...(warmupPromise ? [warmupPromise] : []), ...workers])
+    return queue // whatever's left was never even started this step
   }
 
   await persistRecordOnly() // initial lease-take write
@@ -251,20 +270,23 @@ export async function runStep(
   const pendingAtStart = rec.lines.flatMap((line, i) =>
     line === null ? [i] : [],
   )
-  if (pendingAtStart.length > 0) {
-    await pump(pendingAtStart)
-  }
+  const neverAttempted =
+    pendingAtStart.length > 0 ? await pump(pendingAtStart) : []
 
   // Before the final write: re-check cancellation regardless of whether the
   // loop above already noticed it.
   await refreshCancelledState()
   const isCancelled = rec.run.state === 'cancelled'
-  const stillPending = rec.lines.some((line) => line === null)
+  // A line that was attempted (its provider call returned, success or
+  // AnnotateError) is done for this step even if it failed - only a line
+  // the deadline/reserve/cancellation cut off before it ever started
+  // should cause a hop (PLAN.MD §4.2 step 5 / §10 "M3" correction).
+  const hasUnattemptedLines = neverAttempted.length > 0
 
   rec.durationMs += ctx.clock.now() - startedAt
   rec.updatedAt = nowIso()
 
-  if (stillPending && !isCancelled) {
+  if (hasUnattemptedLines && !isCancelled) {
     rec.run = {
       ...rec.run,
       state: 'running',

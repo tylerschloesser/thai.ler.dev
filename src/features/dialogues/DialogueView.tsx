@@ -12,6 +12,7 @@ import { getSetting, setSetting } from '../../db/settings'
 import type { Settings } from '../../db/settings'
 import { exportSnapshot } from '../../db/snapshot'
 import { splitDialogue } from '../../llm/split'
+import { watchAnnotation } from '../../sync/poll'
 import {
   AlertDialog,
   Button,
@@ -127,6 +128,20 @@ export function DialogueView({ dialogueId }: DialogueViewProps) {
   // Toasts each newly-failed line exactly once, keyed by the exact error
   // text so a line that fails again with a different message re-toasts
   // (docs/plans/P0.md §4.6 `errors` spec) but a re-render never duplicates one.
+  // Resume-on-open (PLAN.MD §4.2/§4.5): while the current annotation's run
+  // is `queued`/`running`, watch it — `src/sync/poll.ts`'s `watchAnnotation`
+  // polls `GET /api/annotation` and, if the lease looks stalled, calls
+  // `POST /api/annotation/resume` itself. This is the entire mechanism for
+  // "come back later, on any browser, and a stuck job finishes" - nothing
+  // else needs to happen on mount.
+  const annotationId = annotation?.id
+  const runState = annotation?.run.state
+  useEffect(() => {
+    if (!annotationId) return
+    if (runState !== 'queued' && runState !== 'running') return
+    return watchAnnotation(annotationId)
+  }, [annotationId, runState])
+
   const toastedErrorsRef = useRef<Set<string>>(new Set())
   useEffect(() => {
     if (!annotation) return

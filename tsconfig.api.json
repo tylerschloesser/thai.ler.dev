@@ -17,17 +17,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["api", "src/lib", "src/llm"],
-  "exclude": [
-    // Deleted in M3 (PLAN.MD §4.5): browser-only client, uses
-    // `import.meta.env` which needs "vite/client" types, not available
-    // under this Node-only (`types: ["node"]`) project.
-    "src/llm/client.ts",
-    "src/llm/client.test.ts",
-    // pipeline.ts itself is fine, but its test drags in client.ts-adjacent
-    // Vitest/e2e-mock setup that isn't meant to run through `tsc -b` here;
-    // its queue/resume logic moves into api/_lib/runner.ts in M1 and
-    // pipeline.ts/pipeline.test.ts are deleted in M3.
-    "src/llm/pipeline.test.ts"
-  ]
+  "include": ["api", "src/lib", "src/llm"]
 }

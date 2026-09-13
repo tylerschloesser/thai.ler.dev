@@ -37,6 +37,7 @@ test.describe('library', () => {
   test('seed 2 dialogues, rename one, delete the other', async ({
     page,
     seed,
+    context,
   }) => {
     const dialogueA = makeDialogue({
       id: 'e2e-dialogue-a',
@@ -78,6 +79,22 @@ test.describe('library', () => {
       page.getByRole('link', { name: 'Ordering coffee' }),
     ).toHaveCount(0)
 
+    // The rename reaches the server via the outbox push (src/sync, started
+    // by main.tsx's startSync()) - not just the local IndexedDB copy.
+    await expect
+      .poll(
+        async () => {
+          const res = await context.request.get(
+            '/api/sync/record?kind=dialogue&id=e2e-dialogue-a',
+          )
+          if (!res.ok()) return null
+          const body = await res.json()
+          return body.record.title as string
+        },
+        { timeout: 10_000 },
+      )
+      .toBe('Coffee shop chat')
+
     await page.reload()
     await expect(
       page.getByRole('link', { name: 'Coffee shop chat' }),
@@ -99,6 +116,21 @@ test.describe('library', () => {
     await expect(page.getByRole('link', { name: 'At the market' })).toHaveCount(
       0,
     )
+
+    // The delete (a tombstone, not a row removal) reaches the server too.
+    await expect
+      .poll(
+        async () => {
+          const res = await context.request.get(
+            '/api/sync/record?kind=dialogue&id=e2e-dialogue-b',
+          )
+          if (!res.ok()) return null
+          const body = await res.json()
+          return body.record.deletedAt !== null
+        },
+        { timeout: 10_000 },
+      )
+      .toBe(true)
 
     await page.reload()
     await expect(page.getByRole('link', { name: 'At the market' })).toHaveCount(

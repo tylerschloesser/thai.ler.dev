@@ -22,7 +22,6 @@ export type Theme = 'system' | 'light' | 'dark'
 
 export interface Settings {
   model: string
-  apiKeyOverride: string | null
   showRomanization: boolean
   showGloss: boolean
   toneColors: boolean
@@ -32,7 +31,6 @@ export interface Settings {
 
 export const SETTINGS_DEFAULTS: Settings = {
   model: 'claude-opus-5',
-  apiKeyOverride: null,
   showRomanization: true,
   showGloss: true,
   toneColors: true,

@@ -146,6 +146,64 @@ test.describe('settings', () => {
     ).toBeVisible()
   })
 
+  test('a changed model is sent as the model in POST /api/annotate', async ({
+    page,
+  }) => {
+    await page.goto('/settings')
+
+    const trigger = page.getByRole('combobox', { name: 'Model' })
+    await trigger.click()
+    await page.getByRole('option', { name: 'Claude Sonnet 5' }).click()
+    await waitForPersistedSetting(page, 'model', 'claude-sonnet-5')
+
+    await page.goto('/')
+    const requestPromise = page.waitForRequest(
+      (req) => req.url().includes('/api/annotate') && req.method() === 'POST',
+    )
+    await page.getByRole('button', { name: 'Load sample' }).click()
+    await page.getByRole('button', { name: 'Annotate' }).click()
+    const request = await requestPromise
+
+    const body = request.postDataJSON() as { model: string }
+    expect(body.model).toBe('claude-sonnet-5')
+  })
+
+  test('the Sync section shows a last-pull time and there is no API-key field', async ({
+    page,
+  }) => {
+    await page.goto('/')
+    await page.evaluate(() =>
+      (
+        window as unknown as {
+          __thai: { sync: { pull: () => Promise<unknown> } }
+        }
+      ).__thai.sync.pull(),
+    )
+
+    await page.goto('/settings')
+
+    const syncSection = page.getByRole('region', { name: 'Sync' })
+    await expect(
+      syncSection.getByRole('heading', { name: 'Sync' }),
+    ).toBeVisible()
+    await expect(syncSection.getByText('Last pull')).toBeVisible()
+    // `{ exact: true }` matters here: a plain `getByText('Never')` also
+    // case-insensitively substring-matches ExportImport's unrelated "is
+    // never wiped" copy elsewhere on the page, which would make this
+    // assertion pass or fail for the wrong reason regardless of the actual
+    // sync state.
+    await expect(syncSection.getByText('Never', { exact: true })).toHaveCount(0)
+    await expect(
+      syncSection.getByRole('button', { name: 'Sync now' }),
+    ).toBeVisible()
+    await expect(
+      syncSection.getByRole('button', { name: 'Rebuild sync index' }),
+    ).toBeVisible()
+
+    await expect(page.getByLabel('API key override')).toHaveCount(0)
+    await expect(page.getByText('No API key configured')).toHaveCount(0)
+  })
+
   test('Import of a malformed file surfaces a readable error toast', async ({
     page,
   }, testInfo) => {

@@ -1,62 +1,14 @@
-import { readFileSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-import type { LineAnnotation } from '../../src/llm/schema'
-
 /**
- * SSE builder + Playwright route handler for mocking
- * `https://api.anthropic.com/v1/messages` in e2e tests (docs/plans/P0.md §4.6/§10).
- * Exported separately so `e2e/fixtures.ts` can wire `anthropicMockRoute`
- * into its default `context.route(...)` handler while other tests can
- * still reach for `sseFromText` directly to build custom responses (e.g.
- * error injection specs).
+ * SSE builder for mocking `https://api.anthropic.com/v1/messages` shapes
+ * (docs/plans/P0.md §4.6/§10). As of M3, annotation runs server-side
+ * (`api/_lib/providers/anthropic.ts`) and the browser never calls
+ * `api.anthropic.com` at all — `e2e/fixtures.ts` installs a guard route that
+ * fails any test making such a request. `sseFromText` survives only for
+ * `src/llm/anthropicMock.test.ts`'s Vitest round-trip test of the real
+ * `@anthropic-ai/sdk` client against a stubbed `fetch` (proving the SDK
+ * parses a structured-output SSE response the way `annotateLine.ts`
+ * expects) — it has nothing to do with e2e/Playwright anymore.
  */
-
-// Minimal structural type for a Playwright `Route` - avoids a hard
-// dependency on `@playwright/test`'s types here so this module (and its
-// Vitest unit test) can also run under plain Node/Vitest without pulling in
-// Playwright's runtime.
-export interface MockRoute {
-  request(): {
-    postDataJSON(): unknown
-  }
-  fulfill(options: {
-    status: number
-    contentType: string
-    body: string
-  }): Promise<void>
-}
-
-interface AnthropicContentBlock {
-  type: string
-  text?: string
-}
-
-interface AnthropicRequestBody {
-  model?: string
-  messages?: Array<{ role: string; content?: string | AnthropicContentBlock[] }>
-}
-
-const here = path.dirname(fileURLToPath(import.meta.url))
-const FIXTURE_PATH = path.join(
-  here,
-  '..',
-  '..',
-  'src',
-  'fixtures',
-  'sample.annotation.json',
-)
-
-let cachedFixtureLines: LineAnnotation[] | null = null
-
-/** Lazily loads and caches `src/fixtures/sample.annotation.json`. Loaded via `fs`, not a static JSON import, so this module works identically under Vitest and Playwright without relying on either runtime's JSON-import handling. */
-function loadFixtureLines(): LineAnnotation[] {
-  if (!cachedFixtureLines) {
-    const raw = readFileSync(FIXTURE_PATH, 'utf8')
-    cachedFixtureLines = JSON.parse(raw) as LineAnnotation[]
-  }
-  return cachedFixtureLines
-}
 
 /**
  * Builds a Server-Sent Events body reproducing the shape a real
@@ -100,78 +52,4 @@ export function sseFromText(text: string, model = 'claude-opus-5'): string {
     }),
     event('message_stop', {}),
   ].join('')
-}
-
-function extractContentBlocks(
-  body: AnthropicRequestBody,
-): AnthropicContentBlock[] {
-  const content = body.messages?.[0]?.content
-  if (!content) return []
-  if (typeof content === 'string') return [{ type: 'text', text: content }]
-  return content
-}
-
-/** Extracts N from a `<target line="N">` block, if present. */
-function extractTargetIndex(body: AnthropicRequestBody): number | null {
-  for (const block of extractContentBlocks(body)) {
-    if (block.type !== 'text' || !block.text) continue
-    const match = /<target line="(\d+)">/.exec(block.text)
-    if (match?.[1] !== undefined) {
-      const index = Number(match[1])
-      if (!Number.isNaN(index)) return index
-    }
-  }
-  return null
-}
-
-/** Fallback: finds the fixture line whose Thai text appears verbatim in the request content, for requests that don't use the `<target line="N">` convention. */
-function findIndexByThaiText(
-  body: AnthropicRequestBody,
-  fixtureLines: LineAnnotation[],
-): number | null {
-  const combinedText = extractContentBlocks(body)
-    .map((block) => block.text ?? '')
-    .join('\n')
-  const index = fixtureLines.findIndex(
-    (line) => line.thai.length > 0 && combinedText.includes(line.thai),
-  )
-  return index === -1 ? null : index
-}
-
-/**
- * Playwright route handler for `https://api.anthropic.com/v1/messages`.
- * Reads the request body, finds which dialogue line is the target (by
- * `<target line="N">` index, falling back to matching the target line's
- * Thai text), and fulfills with an SSE body carrying that line's fixture
- * annotation as structured-output JSON text.
- */
-export async function anthropicMockRoute(route: MockRoute): Promise<void> {
-  const body = route.request().postDataJSON() as AnthropicRequestBody
-  const fixtureLines = loadFixtureLines()
-
-  const index =
-    extractTargetIndex(body) ?? findIndexByThaiText(body, fixtureLines)
-  const line = index !== null ? fixtureLines[index] : undefined
-
-  if (!line) {
-    await route.fulfill({
-      status: 500,
-      contentType: 'application/json',
-      body: JSON.stringify({
-        type: 'error',
-        error: {
-          type: 'not_found_error',
-          message:
-            'anthropicMockRoute: could not find a fixture line matching this request.',
-        },
-      }),
-    })
-    return
-  }
-
-  await route.fulfill({
-    status: 200,
-    contentType: 'text/event-stream',
-    body: sseFromText(JSON.stringify(line), body.model ?? 'claude-opus-5'),
-  })
 }

@@ -1,12 +1,6 @@
 import { useLiveQuery } from 'dexie-react-hooks'
-import { db, ANNOTATION_SCHEMA_VERSION, LEGACY_RUN } from './db'
-import type {
-  AnnotationRecord,
-  Dialogue,
-  LineAnnotation,
-  OutboxRow,
-  SettingRow,
-} from './db'
+import { db } from './db'
+import type { AnnotationRecord, Dialogue, OutboxRow, SettingRow } from './db'
 import { manifestKey } from '../lib/records'
 import type { RecordKind } from '../lib/records'
 import { mergeSettingRows, pickWinner } from '../lib/merge'
@@ -171,108 +165,7 @@ export async function getAnnotationsByIds(
 
 // ---------------------------------------------------------------------------
 // Annotation lifecycle
-//
-// @deprecated — removed in M3. `createAnnotation`/`upsertAnnotationLine`/
-// `finalizeAnnotation` back the browser-side pipeline (`src/llm/pipeline.ts`)
-// only until M3 moves annotation to the server (`api/_lib/runner.ts`); no
-// new caller should be added. They intentionally stay decoupled from the
-// outbox except at `finalizeAnnotation` — a partial, still-running client
-// job has nothing useful to sync yet.
 // ---------------------------------------------------------------------------
-
-/**
- * Creates a new (`status: 'partial'`) annotation record with `lineCount`
- * empty slots, ready for `upsertAnnotationLine` to fill in as the P0
- * pipeline's per-line calls land. `run` starts as the legacy shape
- * (PLAN.MD §4.4) with `state: 'running'`, since this record represents a
- * job actively running in this tab right now, not an already-finished one.
- *
- * @deprecated removed in M3
- */
-export async function createAnnotation(params: {
-  dialogueId: string
-  model: string
-  promptVersion: number
-  lineCount: number
-}): Promise<AnnotationRecord> {
-  const now = nowIso()
-  const annotation: AnnotationRecord = {
-    id: newId(),
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
-    dialogueId: params.dialogueId,
-    model: params.model,
-    promptVersion: params.promptVersion,
-    schemaVersion: ANNOTATION_SCHEMA_VERSION,
-    lines: new Array<LineAnnotation | null>(params.lineCount).fill(null),
-    lineErrors: new Array<string | null>(params.lineCount).fill(null),
-    status: 'partial',
-    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
-    durationMs: 0,
-    run: { ...LEGACY_RUN, state: 'running' },
-  }
-  await db.annotations.add(annotation)
-  return annotation
-}
-
-export type LineResult = { line: LineAnnotation } | { error: string }
-
-/**
- * Sets (or clears) one line's result/error, index-aligned with
- * `split(sourceText)`.
- *
- * @deprecated removed in M3
- */
-export async function upsertAnnotationLine(
-  annotationId: string,
-  lineIndex: number,
-  result: LineResult,
-): Promise<void> {
-  await db.transaction('rw', db.annotations, async () => {
-    const existing = await db.annotations.get(annotationId)
-    if (!existing) {
-      throw new Error(`upsertAnnotationLine: no annotation "${annotationId}"`)
-    }
-    const lines = [...existing.lines]
-    const lineErrors = [...existing.lineErrors]
-    if ('error' in result) {
-      lineErrors[lineIndex] = result.error
-    } else {
-      lines[lineIndex] = result.line
-      lineErrors[lineIndex] = null
-    }
-    await db.annotations.update(annotationId, {
-      lines,
-      lineErrors,
-      updatedAt: nowIso(),
-    })
-  })
-}
-
-/**
- * Marks an annotation `'complete'` and its `run` `'done'`; the pipeline
- * decides when to call this. Enqueues the finished record for push — the
- * one point in the legacy pipeline where there's a finished record worth
- * syncing.
- *
- * @deprecated removed in M3
- */
-export async function finalizeAnnotation(annotationId: string): Promise<void> {
-  const updatedAt = nowIso()
-  await db.transaction('rw', db.annotations, db.outbox, async () => {
-    const existing = await db.annotations.get(annotationId)
-    if (!existing) {
-      throw new Error(`finalizeAnnotation: no annotation "${annotationId}"`)
-    }
-    await db.annotations.update(annotationId, {
-      status: 'complete',
-      updatedAt,
-      run: { ...existing.run, state: 'done' },
-    })
-    await enqueueOutbox('annotation', annotationId, updatedAt)
-  })
-}
 
 export async function setCurrentAnnotation(
   dialogueId: string,

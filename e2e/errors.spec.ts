@@ -3,15 +3,8 @@ import type { Dialogue } from '../src/db/db'
 import { DB_SCHEMA_VERSION } from '../src/db/db'
 import type { Snapshot } from '../src/db/snapshot'
 import { SNAPSHOT_FORMAT } from '../src/db/snapshot'
+import { waitForAnnotationStatus } from './testUtils'
 
-/** A one-line, not-yet-annotated dialogue: `AnnotateStatus` renders a
- * "Start annotation" button for it (`total === 0 && !isRunning`), which
- * triggers a `/v1/messages` request for that line. The Anthropic SDK
- * client (src/llm/client.ts) retries 429/500 responses itself (default
- * `maxRetries: 2`, so up to 3 attempts) before giving up, so
- * `mockAnthropicError` must fail every attempt - not just the first - or
- * the SDK's own retry silently succeeds against the default mock and the
- * line never actually fails. */
 function makeSnapshot(dialogueId: string): Snapshot {
   const now = new Date().toISOString()
   const dialogue: Dialogue = {
@@ -30,72 +23,55 @@ function makeSnapshot(dialogueId: string): Snapshot {
     deviceId: 'e2e-errors-spec',
     dialogues: [dialogue],
     annotations: [],
-    // A dummy (non-`sk-ant-`) API-key override: without it,
-    // src/llm/client.ts throws MissingApiKeyError before ever reaching
-    // the network (this environment has no build-time ANTHROPIC_API_KEY),
-    // and the mocked 429/500 below would never even be requested. The
-    // value never leaves the browser - every /v1/messages request is
-    // intercepted by mockAnthropicError/the default mock regardless.
-    settings: [
-      { key: 'apiKeyOverride', value: 'e2e-dummy-key', updatedAt: now },
-    ],
+    settings: [],
   }
 }
 
 test.describe('errors', () => {
-  test('a 429 shows a toast, marks the line failed, and retry succeeds once the mock recovers', async ({
+  test('a failed line shows a toast + Failed status, and Retry succeeds once the error clears', async ({
     page,
     seed,
-    mockAnthropicError,
+    fakeError,
   }) => {
-    const dialogueId = 'e2e-errors-429'
+    const dialogueId = 'e2e-errors-line'
     await page.goto('/')
     await seed(makeSnapshot(dialogueId))
-
-    // No `times`: fails every attempt, including the SDK's own retries,
-    // until reset below.
-    await mockAnthropicError({ status: 429 })
+    await fakeError('rate_limited')
 
     await page.goto(`/d/${dialogueId}`)
     await page.getByRole('button', { name: 'Start annotation' }).click()
 
+    // `api/_lib/runner.ts` now counts a line as *attempted* the moment its
+    // provider call returns (success or `AnnotateError`), not just "still
+    // non-null" - so a single always-failing line ends the job in one step
+    // (`run.state: 'done'`, `status: 'partial'`, no hop), which the client
+    // renders as the `failed` state (`useAnnotate.ts`'s
+    // `deriveAnnotateState`) as soon as the next poll tick lands.
     await expect(page.getByText('Line 1 failed to annotate')).toBeVisible({
       timeout: 10_000,
     })
-    await expect(page.getByText('Failed', { exact: true })).toBeVisible()
+    // Two distinct "Failed" texts now render once the job reaches
+    // `run.state: 'done'` + `status: 'partial'`: the per-line status badge
+    // (`LineView`) and the overall run state (`AnnotateStatus`'s
+    // `deriveAnnotateState`) - assert both, scoped so they can't collide.
+    const lines = page.getByRole('list', { name: 'Dialogue lines' })
+    await expect(lines.getByText('Failed', { exact: true })).toBeVisible()
+    const runStatus = page.getByText('0/1 lines').locator('..')
+    await expect(runStatus.getByText('Failed', { exact: true })).toBeVisible()
     const retryButton = page.getByRole('button', { name: 'Retry failed' })
     await expect(retryButton).toBeVisible()
 
-    // Reset the override before retrying: `times: 0` means the next
-    // request (and the SDK's own retries, if any) fall through to the
-    // default fixture-backed success mock.
-    await mockAnthropicError({ status: 429, times: 0 })
+    // Clear the injected error before retrying, so the next attempt (and
+    // any lines the runner re-runs) hits the default fake-provider success
+    // path instead. Once the job reached `run.state: 'done'` above,
+    // `src/sync/poll.ts`'s `watchAnnotation` already stopped polling it
+    // (`isTerminal`) - a `done` record is never "stalled", so its own
+    // autonomous stalled-resume can no longer race this manual Retry click.
+    await fakeError(null)
     await retryButton.click()
 
+    await waitForAnnotationStatus(page, dialogueId, 'complete')
     await expect(page.getByText('1/1 lines')).toBeVisible()
     await expect(page.getByText('Failed', { exact: true })).toHaveCount(0)
-  })
-
-  test('a 500 shows a toast and marks the line failed', async ({
-    page,
-    seed,
-    mockAnthropicError,
-  }) => {
-    const dialogueId = 'e2e-errors-500'
-    await page.goto('/')
-    await seed(makeSnapshot(dialogueId))
-
-    await mockAnthropicError({ status: 500 })
-
-    await page.goto(`/d/${dialogueId}`)
-    await page.getByRole('button', { name: 'Start annotation' }).click()
-
-    await expect(page.getByText('Line 1 failed to annotate')).toBeVisible({
-      timeout: 10_000,
-    })
-    await expect(page.getByText('Failed', { exact: true })).toBeVisible()
-    await expect(
-      page.getByRole('button', { name: 'Retry failed' }),
-    ).toBeVisible()
   })
 })
