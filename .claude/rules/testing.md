@@ -193,11 +193,38 @@ module:
 The live suite's estimated Blob cost is in PLAN.MD §4.3: ≈ 40 advanced +
 ≈ 80 simple ops for one full `@live` run (all 5 specs) — that's why it
 should run at milestone ends, not on every push, and why `real-model` is
-opt-in separately from the rest. As of M4 landing, the suite has not yet
-been run against a real Vercel preview by an executor — don't report a
-`pnpm test:e2e:vercel` result, a measured hop count, or a real-model
-latency/cost number as fact until that run has actually happened and is
-recorded in PLAN.MD §10/§4.2.
+opt-in separately from the rest. As of M4, `pnpm test:e2e:vercel` has run
+green twice in a row against CLI preview `thai-ler-9zvm97vro` (7 passed,
+`real-model` skipped, ≈ 11s each), plus one 8/8 run with
+`E2E_REAL_MODEL=1` against `thai-ler-ko3z03nvw` (≈ 112s, `claude-sonnet-5`,
+2 lines). `live/hop` measured `run.hops = 2`, `run.steps = 3` on the real
+Vercel runtime with no `508` — see PLAN.MD §10 "Corrected during M4" for
+the full record. `live/health` has also passed against the Git-built
+preview of `015067d`. Production itself is still **not** deployed (M6);
+don't report a production `live/health` result until that run has actually
+happened. Once it has (`E2E_TARGET=production`, below), report it the same
+way — a `pnpm test:e2e:vercel`/production result, a measured hop count, or
+a real-model latency/cost number is only fact once it's recorded in
+PLAN.MD §10/§4.2.
+
+### Against production (`E2E_TARGET=production`, post-M6 only)
+
+Once the M6 cutover has happened, only `e2e/live/health.spec.ts` is
+meaningful against production (test mode is off there, so every other
+`@live` spec's cookie-based overrides are no-ops and `real-model`-style
+costs are real money). Run it with both the target URL and the env switch:
+
+```sh
+E2E_TARGET=production PLAYWRIGHT_BASE_URL=https://thai-ler-dev.vercel.app \
+  pnpm exec playwright test e2e/live/health.spec.ts
+```
+
+`E2E_TARGET=production` (default: preview) flips `health.spec.ts`'s own
+assertions to expect `testMode: false`, the real `provider`, and `404` from
+`/api/test/seed` / `/api/test/namespace` instead of preview's
+`ALLOW_TEST_MODE=1` shape — it does not change `playwright.config.ts` or
+any other spec. Production is not deployed as of this writing; don't run
+this against it until M6.
 
 ## Vitest includes
 
