@@ -725,7 +725,7 @@ Acceptance: `pnpm test` green; a Node smoke (`pnpm exec tsx
 scripts/smoke-runner.ts`, memory store, fake-slow, `STEP_BUDGET_MS=2000`,
 local hop to a `vite preview`) completes an 8-line job in ≥ 2 steps.
 
-### M2 — Data layer v2 and sync client `[~]` (parallel-safe with M1: `src/db/**`, `src/sync/**`, `src/app/debug.ts`)
+### M2 — Data layer v2 and sync client `[x]` (parallel-safe with M1: `src/db/**`, `src/sync/**`, `src/app/debug.ts`)
 
 1. Dexie v2 + upgrade + tests (existing rows get `run`; `outbox`).
 2. `repo.ts`: outbox enqueue in every write, `mergeRemote*`,
@@ -740,7 +740,7 @@ Acceptance: `pnpm test` green; a Vitest integration test drives `pull` →
 `push` → `pull` against an in-process fake server built from M1's handlers
 once both land (orchestrator adds it after merging M1 + M2).
 
-### M3 — Client integration `[ ]` (serial after M1 + M2)
+### M3 — Client integration `[~]` (serial after M1 + M2)
 
 1. `useAnnotate` → job client (§4.5); `AnnotateStatus` states running /
    stalled / failed / cancelled / complete; `Composer`, `DialogueView`
@@ -1385,6 +1385,25 @@ export async function pull(): Promise<PullCounts> {
   now carries a unique `rev`, created on each enqueue, and `clearOutbox`
   compares that. `rev` is not indexed, so the store stays `key, updatedAt`
   and Dexie v2 is unchanged.
+
+**Corrected during M3** (decided when writing the M3a brief, 2026-09-13):
+
+- **Bundle secret check** lives in `e2e/bundle.spec.ts`, part of the fast
+  Playwright suite, not in `scripts/check-bundle.test.ts`. The gate runs
+  `pnpm test` _before_ any build, so a Vitest check on `dist/` would read a
+  stale or missing bundle. Playwright's `webServer` builds first. The spec
+  also asserts that `api.anthropic.com` and `dangerouslyAllowBrowser` are
+  absent, which proves the SDK left the client.
+- **A `queued` record with `leaseUntil: null`** (the runner never started,
+  for example because the `annotate` function died before `waitUntil` ran)
+  counts as live for 15 s after its `updatedAt` and as **stalled** after
+  that. §4.4's derivation only covered an expired lease, which would have
+  left such a job waiting forever.
+- M3 runs as **M3a** (app wiring, deletions, the fixture rewrite, existing
+  specs green), then **M3b** (the new job specs) and **M3c** (context-file
+  accuracy pass) in parallel. The old specs cannot pass on the new flow
+  until the fixtures change, so the app change and the fixture rewrite have
+  to land together.
 
 ---
 
