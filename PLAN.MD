@@ -1404,6 +1404,16 @@ export async function pull(): Promise<PullCounts> {
   accuracy pass) in parallel. The old specs cannot pass on the new flow
   until the fixtures change, so the app change and the fixture rewrite have
   to land together.
+- **Runner: "attempted", not "non-null", decides the hop** (found in M3a;
+  an M1 bug). The runner hopped whenever a line was still `null`, so a line
+  that kept failing (a rate limit, a refusal) hopped `MAX_HOPS` times and
+  then left the record `running` with an expired lease forever. It never
+  reached §4.4's "failed" state (done + partial), so the UI could not offer
+  Retry. Now a pending line counts as attempted once its provider call
+  returns, whether it succeeded or failed. A step hops only when the
+  deadline cut off lines that were **never attempted**. Otherwise it ends
+  `done` with `status: 'partial'` and `lineErrors` kept, and Retry (=
+  `resume`) re-runs the `null` lines in a new lineage.
 
 ---
 
