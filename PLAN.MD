@@ -758,7 +758,7 @@ Acceptance: fast suite green locally; `pnpm test:e2e:vercel` green
 the tab within 2 s, reopen `/d/:id` a minute later in a second browser
 profile → complete.
 
-### M4 — Live suite, hop verification, real-model smoke `[ ]`
+### M4 — Live suite, hop verification, real-model smoke `[~]`
 
 1. `e2e/live/{annotate,hop,sync,real-model}.spec.ts`; namespace teardown;
    `scripts/e2e-vercel.sh` prints the preview URL and the Blob usage
