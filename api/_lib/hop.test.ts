@@ -97,6 +97,27 @@ describe('hop', () => {
     expect(ok).toBe(false)
   })
 
+  it('returns false on Vercel recursion protection 508 INFINITE_LOOP_DETECTED (PLAN.MD §9 risks)', async () => {
+    // Self-invocation past an unpublished hop count answers this specific
+    // status - MAX_HOPS in runner.ts is the mitigation, but hop() itself
+    // must still behave like any other non-202: never throw, just report
+    // failure so the runner leaves the job visibly stalled for resume-on-
+    // open (see runner.test.ts's "stalled outcome" test for that half).
+    const fetchImpl = vi.fn(
+      async () => new Response('INFINITE_LOOP_DETECTED', { status: 508 }),
+    )
+    const ok = await hop(
+      {
+        origin: 'http://localhost:4173',
+        internalSecret: 'x',
+        testCookie: null,
+        fetchImpl,
+      },
+      'ann-1',
+    )
+    expect(ok).toBe(false)
+  })
+
   it('returns false (never throws) when fetch itself throws', async () => {
     const fetchImpl = vi.fn(async () => {
       throw new Error('network down')

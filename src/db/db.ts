@@ -14,7 +14,7 @@ import type {
   RunState,
   SettingRow,
 } from '../lib/records'
-import { RUN_PROVIDERS, RUN_STATES } from '../lib/records'
+import { manifestKey, RUN_PROVIDERS, RUN_STATES } from '../lib/records'
 import type { LineAnnotation } from '../llm/schema'
 
 // --- Shared record contract (PLAN.MD §4.4) ---------------------------------
@@ -137,7 +137,14 @@ export const db = new ThaiLerDb()
 
 /**
  * Hard-deletes soft-deleted `dialogues`/`annotations` rows whose
- * `deletedAt` is older than 90 days. Pure w.r.t. wall-clock time via the
+ * `deletedAt` is older than 90 days, and — PLAN.MD §5 M5 — any `outbox`
+ * row left pointing at one of those now-gone records. An outbox row exists
+ * to get a record pushed; once its record is hard-purged there is nothing
+ * left to push, so leaving the row behind would make `push()` try to load
+ * a record that no longer exists forever. A row for a record that is
+ * merely tombstoned (not yet past the 90-day cutoff) is untouched — the
+ * tombstone itself still needs to reach the server, so it must stay queued
+ * until `push()` drains it normally. Pure w.r.t. wall-clock time via the
  * `now` parameter, so it's directly unit-testable with fake-indexeddb.
  * Callers (see `src/app/debug.ts`) should invoke this fire-and-forget on
  * startup — it must never be `await`-ed on the critical path to first
@@ -161,14 +168,26 @@ export async function purgeTombstones(now: Date = new Date()): Promise<number> {
     .filter((row) => row.deletedAt !== null && row.deletedAt < cutoff)
     .primaryKeys()
 
-  await db.transaction('rw', db.dialogues, db.annotations, async () => {
-    if (staleDialogueIds.length > 0) {
-      await db.dialogues.bulkDelete(staleDialogueIds)
-    }
-    if (staleAnnotationIds.length > 0) {
-      await db.annotations.bulkDelete(staleAnnotationIds)
-    }
-  })
+  await db.transaction(
+    'rw',
+    db.dialogues,
+    db.annotations,
+    db.outbox,
+    async () => {
+      if (staleDialogueIds.length > 0) {
+        await db.dialogues.bulkDelete(staleDialogueIds)
+        await db.outbox.bulkDelete(
+          staleDialogueIds.map((id) => manifestKey('dialogue', id)),
+        )
+      }
+      if (staleAnnotationIds.length > 0) {
+        await db.annotations.bulkDelete(staleAnnotationIds)
+        await db.outbox.bulkDelete(
+          staleAnnotationIds.map((id) => manifestKey('annotation', id)),
+        )
+      }
+    },
+  )
 
   return staleDialogueIds.length + staleAnnotationIds.length
 }

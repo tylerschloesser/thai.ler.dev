@@ -5,6 +5,7 @@ import type { BlobBackend, BlobStore } from './paths.js'
 
 export type { BlobBackend, BlobStore } from './paths.js'
 export { StorePreconditionError } from './paths.js'
+export { StoreSuspendedError } from './vercel.js'
 export {
   isValidNamespace,
   manifestPath,

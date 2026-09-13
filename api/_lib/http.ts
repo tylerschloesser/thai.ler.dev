@@ -1,4 +1,5 @@
 import type { z } from 'zod'
+import { StoreSuspendedError } from './store/index.js'
 
 /**
  * JSON response helpers shared by every `api/**` handler (PLAN.MD §4.1,
@@ -50,9 +51,20 @@ export function fail(kind: ErrorKind, message: string): Response {
   return json({ error: { kind, message } }, STATUS[kind])
 }
 
+/**
+ * Readable message for a suspended Hobby Blob store (PLAN.MD §4.3, §9 risks,
+ * §5 M5) - the store answers every request this way until its 30-day quota
+ * window resets; the app keeps reading from IndexedDB regardless.
+ */
+const STORE_SUSPENDED_MESSAGE =
+  'Cloud sync is paused: the Vercel Blob store is suspended until its monthly quota resets. Your library still works offline.'
+
 /** Maps any thrown error (an `HttpError` or not) to a JSON error `Response`. */
 export function failFromError(error: unknown): Response {
   if (error instanceof HttpError) return fail(error.kind, error.message)
+  if (error instanceof StoreSuspendedError) {
+    return fail('store', STORE_SUSPENDED_MESSAGE)
+  }
   const message = error instanceof Error ? error.message : String(error)
   return fail('internal', message)
 }

@@ -540,6 +540,50 @@ describe('runStep', () => {
     expect(after?.lines.some((l) => l === null)).toBe(true)
   })
 
+  // PLAN.MD §9 risks: "Recursion protection 508s the continuation hop" -
+  // `hop()` itself (hop.test.ts) never throws on a 508, it just resolves
+  // `false`. This test is the runner-side half of that risk mitigation: a
+  // hop that fails for exactly that reason must still leave the record
+  // "running" with `leaseUntil` stamped to *now*, i.e. already expired -
+  // not left with the old, still-live lease from the initial lease-take -
+  // so `isLeaseStalled` (src/sync/poll.ts) sees it as stalled immediately
+  // and resume-on-open (`POST /api/annotation/resume`) can pick it back up
+  // without waiting out a lease that was never going to be renewed.
+  it('a hop that fails like a 508 leaves leaseUntil stamped to now (stalled), for resume-on-open', async () => {
+    const store = createMemoryStore()
+    const dlg = dialogue(9)
+    await seed(store, dlg, eightPendingLinesAnnotation(0))
+
+    const events: string[] = []
+    const provider = makeControllableProvider({ durationMs: 80, events })
+    // Captured from inside the hop call itself (the same tick the runner
+    // stamped `leaseUntil` at, just before calling hop) rather than after
+    // `runStep` returns, since `vi.advanceTimersByTimeAsync` may keep
+    // advancing virtual time past that point while draining other timers.
+    let leaseUntilAtHopTime: string | null = null
+    const ctx = baseContext(store, {
+      stepBudgetMs: 100,
+      createProvider: () => provider,
+      // Mirrors exactly what hop.ts's hop() returns for a 508 response
+      // (see hop.test.ts) - the runner never inspects the status itself,
+      // only the boolean.
+      hop: async () => {
+        leaseUntilAtHopTime = new Date(ctx.clock.now()).toISOString()
+        return false
+      },
+    })
+
+    const stepPromise = runStep(ctx, 'a1')
+    await vi.advanceTimersByTimeAsync(200)
+    await stepPromise
+
+    const after = await createRecordsApi(store, 'v1/').getAnnotation('a1')
+    expect(leaseUntilAtHopTime).not.toBeNull()
+    expect(after?.run.state).toBe('running')
+    expect(after?.run.leaseUntil).toBe(leaseUntilAtHopTime)
+    expect(after?.lines.some((l) => l === null)).toBe(true)
+  })
+
   it('accumulates usage and durationMs across lines', async () => {
     const store = createMemoryStore()
     const dlg = dialogue(2)

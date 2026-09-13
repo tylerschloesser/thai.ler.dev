@@ -113,6 +113,86 @@ deploying previews before the M6 production cutover — see `PLAN.MD` §4.6
 for the full auth/secrets design (the hop's internal secret, the WAF rate
 limit, and the cutover's `production` branch tracking).
 
+## Operations
+
+Three failure modes are expected to happen occasionally on a Hobby plan,
+and the app is built to degrade readably rather than crash when they do
+(PLAN.MD §5 M5, §9 risks). None of these require Tyler to do anything
+urgent — the library stays readable offline in every case.
+
+### Cloud sync store suspended (Blob quota exhausted)
+
+**Symptom**: annotating a new dialogue fails with a toast reading "Cloud
+sync is paused: the Vercel Blob store is suspended until its monthly quota
+resets. Your library still works offline." — and a manual "Sync now" in
+Settings fails with the same message, shown as that section's last-sync
+error (`useSync`'s `lastError`). The server maps
+`@vercel/blob`'s `BlobStoreSuspendedError` to this message
+(`api/_lib/store/vercel.ts`'s `StoreSuspendedError`, mapped to a `fail
+('store', ...)` response by `api/_lib/http.ts`'s `failFromError`) whenever
+a Hobby store goes over its monthly Advanced/Simple ops budget (the budget
+itself is tracked in `PLAN.MD` §4.3).
+
+**What still works**: everything already synced is still in IndexedDB and
+fully usable — reading, browsing, and re-reading existing annotations never
+touch the network. Only _new_ annotation runs and sync push/pull are
+blocked until the store is unsuspended.
+
+**What to do**: a suspended Hobby store lifts automatically when its
+30-day usage window resets — there's no button to force it back on. To
+confirm the cause and check how close the account is to the limit again:
+Vercel dashboard → Storage → the affected store (`thai-ler-dev-preview` or
+`thai-ler-dev-prod`) → **Usage**. If it's suspended well before the month
+is up, that's a signal to revisit the §4.3 ops budget (fewer manifest
+writes per job, a coarser flush cadence, etc.) rather than to wait it out
+every time.
+
+### Provider 401 (Anthropic API key rejected)
+
+**Symptom**: every line of a new or resumed annotation fails with "The
+server's Anthropic API key was rejected — rotate ANTHROPIC_API_KEY in the
+Vercel project." (`src/llm/annotateLine.ts` maps
+`Anthropic.AuthenticationError` to this message; it lands in that line's
+`lineErrors[i]` and surfaces as a per-line toast in `DialogueView`). This
+means the key in the server's environment is missing, revoked, or expired
+— never a Settings problem, since the browser has no Anthropic client or
+key of its own as of M3.
+
+**What to do**: rotate the key in whichever Vercel environment is
+affected (`preview` and/or `production`), then redeploy so the new value
+is picked up:
+
+```sh
+printf '%s' "$ANTHROPIC_API_KEY" | vercel env add ANTHROPIC_API_KEY preview --sensitive --force
+# and/or:
+printf '%s' "$ANTHROPIC_API_KEY" | vercel env add ANTHROPIC_API_KEY production --sensitive --force
+```
+
+Never `echo` the key into a command (it would land in shell history).
+After rotating, redeploy (`pnpm deploy:preview`, or push `vercel` for a Git
+preview) — an already-running Vercel Function keeps its old environment
+until the next deploy.
+
+### Hop 508 (Vercel recursion protection)
+
+**Symptom**: a long job's step count stalls with `run.state: 'running'`
+and an already-past `leaseUntil` (visibly "stalled" in the UI) after using
+up to `MAX_HOPS` (3) continuation hops. This happens when Vercel's
+recursion-protection middleware answers the runner's self-invocation
+(`POST /api/annotation/step`) with `508 INFINITE_LOOP_DETECTED` past an
+unpublished hop count — `api/_lib/hop.ts`'s `hop()` never throws on this
+(or any non-202 response), it just returns `false`, and the runner
+(`api/_lib/runner.ts`) leaves the record stalled rather than crashing.
+
+**What to do**: nothing has to be done by hand. Reopening the dialogue
+(`/d/:id`) is the fix — `DialogueView`'s resume-on-open effect
+(`src/sync/poll.ts`'s `watchAnnotation`) notices the stalled lease and
+calls `POST /api/annotation/resume`, which starts a **fresh** hop lineage
+(a new `run.hops` count) and finishes the remaining lines. This is the
+documented worst case for a job that needs more than `MAX_HOPS` internal
+continuations in one browser session (PLAN.MD §9 risks) — it still
+finishes, just not without the page being reopened once.
+
 ## Project layout
 
 - `api/` — Vercel Functions (`_lib/` is not routed): the annotation runner,
@@ -141,6 +221,5 @@ limit, and the cutover's `production` branch tracking).
 
 See `CLAUDE.md` and `.claude/rules/*.md` for the rules an editing agent
 follows in each of these areas, `PLAN.MD` for the current (P1) plan, and
-`docs/plans/P0.md` for the P0 architecture and milestone history. The full
-operations runbook (failure drills, monitoring) is a `PLAN.MD` M5 item, not
-written yet.
+`docs/plans/P0.md` for the P0 architecture and milestone history. See
+[Operations](#operations) above for the three documented failure drills.

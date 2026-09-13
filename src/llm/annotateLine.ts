@@ -86,9 +86,14 @@ function mapError(err: unknown): AnnotateError {
     )
   }
   if (err instanceof Anthropic.AuthenticationError) {
+    // As of M3 the Anthropic key lives only in the server's environment
+    // (ui.md: "no 'no API key configured' state" - Settings never held one)
+    // - so a 401 here means the operator's ANTHROPIC_API_KEY is missing or
+    // was rejected, not a Settings misconfiguration a learner could fix
+    // (PLAN.MD §5 M5, README "Operations").
     return new AnnotateError(
       'authentication',
-      'The Anthropic API key is missing or invalid. Check it in Settings.',
+      "The server's Anthropic API key was rejected — rotate ANTHROPIC_API_KEY in the Vercel project.",
       { cause: err },
     )
   }

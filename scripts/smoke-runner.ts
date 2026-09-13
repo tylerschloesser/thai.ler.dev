@@ -12,6 +12,15 @@ import { type ChildProcess, spawn } from 'node:child_process'
 import { mkdtemp, rm } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+
+/**
+ * Repo root, resolved from this file's own location rather than
+ * `process.cwd()` (PLAN.MD §5 M5) - the preview server is spawned as
+ * `node_modules/.bin/vite` directly (see below), which needs an absolute
+ * path regardless of where the script happens to be invoked from.
+ */
+const REPO_ROOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '..')
 
 const PORT = 4175
 const BASE_URL = `http://localhost:${PORT}`
@@ -106,8 +115,16 @@ async function main(): Promise<void> {
     `Starting preview on port ${PORT} (BLOB_DISK_ROOT=${diskRoot})...`,
   )
 
+  // Spawn vite's own preview binary directly, not `pnpm preview` - a `pnpm`
+  // script wrapper prints "Lifecycle | ELIFECYCLE  Command failed" whenever
+  // its child exits non-zero, including from the SIGTERM `stopServer()`
+  // sends below on a *successful* run. Vite itself exits 0 on SIGTERM (it
+  // just doesn't print pnpm's lifecycle banner about it), so going straight
+  // to the binary makes a clean run's output clean too, while a real
+  // failure still surfaces via `waitForHealth()`/the HTTP assertions below
+  // throwing and `exitCode` being set to 1.
   const server = spawn(
-    'pnpm',
+    path.join(REPO_ROOT, 'node_modules', '.bin', 'vite'),
     ['preview', '--port', String(PORT), '--strictPort'],
     {
       stdio: 'inherit',
