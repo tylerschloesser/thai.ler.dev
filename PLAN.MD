@@ -674,7 +674,7 @@ milestone ends with `pnpm check && pnpm test && pnpm test:e2e` green, a
 commit, `pnpm test:e2e:vercel` green (M0, M1, M4, M5, M6 at minimum), the
 Blob usage number noted in the commit body, and a push.
 
-### M0 — Spike, scaffolding, deploy loop `[~]` (serial, one implementer + orchestrator)
+### M0 — Spike, scaffolding, deploy loop `[x]` (serial, one implementer + orchestrator)
 
 1. Orchestrator: `vercel link --yes --project thai-ler-dev --scope
 tylerschloessers-projects`; confirm `.env.local` exists with
@@ -713,7 +713,7 @@ iad1 --environment preview --environment development`.
 Acceptance: local suite green; `pnpm test:e2e:vercel` green (health on a
 real preview with `blobBackend: 'vercel'`); bundle check shows no key.
 
-### M1 — Server core `[~]` (parallel-safe: `api/**`, `src/llm/provider.ts`, `src/llm/annotateLine.ts`, `src/lib/{records,merge}.ts`, `scripts/gen-fixture.ts`)
+### M1 — Server core `[x]` (parallel-safe: `api/**`, `src/llm/provider.ts`, `src/llm/annotateLine.ts`, `src/lib/{records,merge}.ts`, `scripts/gen-fixture.ts`)
 
 1. `src/lib/records.ts` (types), `src/lib/merge.ts` (`pickWinner`, moved
    from `snapshot.ts` with its tests), `src/llm/provider.ts`,
@@ -751,7 +751,7 @@ Acceptance: `pnpm test` green; a Vitest integration test drives `pull` →
 `push` → `pull` against an in-process fake server built from M1's handlers
 once both land (orchestrator adds it after merging M1 + M2).
 
-### M3 — Client integration `[~]` (serial after M1 + M2)
+### M3 — Client integration `[x]` (serial after M1 + M2)
 
 1. `useAnnotate` → job client (§4.5); `AnnotateStatus` states running /
    stalled / failed / cancelled / complete; `Composer`, `DialogueView`
@@ -783,7 +783,7 @@ profile → complete.
 
 Acceptance: `@live` green twice in a row; measured numbers in this file.
 
-### M5 — Hardening and docs `[~]`
+### M5 — Hardening and docs `[x]`
 
 1. Accessibility of the new status states (`aria-live` on stalled/resumed;
    Sync section labels).
@@ -1463,6 +1463,14 @@ export async function pull(): Promise<PullCounts> {
 - `ANTHROPIC_API_KEY` in `preview` has been **sensitive** since
   2026-09-13T05:24Z. Deployments built before that still carry the old
   plain value, so the real-model smoke runs on a fresh preview.
+- **M3 manual walk** (scripted Playwright walk on the Git-built preview
+  `thai-ler-i235itx5n` of `015067d`, real provider, `claude-sonnet-5`):
+  profile A got the 202 and closed at 1.7 s. The job reached 5/8 lines on
+  the server with no browser open. A fresh profile B opened `/d/:id` at
+  62 s, and the job finished `complete` (8/8, one step, no hop) at about
+  102 s, and the IndexedDB in profile B agreed. The Git-triggered build of
+  `015067d` honoured `.vercelignore` (READY, 11 functions), and
+  `live/health` passed against it.
 
 ---
 
