@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { pull } from '../../sync/pull'
 import { api } from '../../sync/api'
 import { useSync } from '../../sync/useSync'
+import { useNow } from '../../app/useNow'
 import { Button, useToast } from '../../ui'
 import styles from './SyncStatus.module.css'
 
@@ -63,7 +64,7 @@ export function SyncStatus() {
     }
   }
 
-  const nowMs = Date.now()
+  const nowMs = useNow()
 
   return (
     <section className={styles.root} aria-label="Sync">

@@ -287,6 +287,129 @@ describe('watchAnnotation / pollNow', () => {
     expect(resumeCalls).toBe(0)
   })
 
+  it('a cancelled record with a live lease keeps polling until the runner clears the lease', async () => {
+    // `api/annotation/cancel.ts` deliberately leaves a live `leaseUntil`
+    // untouched so the in-flight runner's own final write (with whatever
+    // lines it actually finished) still has a chance to land - the client
+    // must not treat `state: 'cancelled'` alone as terminal, or those lines
+    // never reach the UI (the bug this test guards against).
+    const now = 1_000_000
+    const liveLeaseUntil = new Date(now + 5_000).toISOString()
+    let getCount = 0
+    const api = stubApi({
+      getAnnotation: async () => {
+        getCount += 1
+        return getCount === 1
+          ? makeRecord({
+              run: {
+                state: 'cancelled',
+                provider: 'fake-slow',
+                leaseUntil: liveLeaseUntil,
+                hops: 0,
+                steps: 1,
+                lastError: null,
+              },
+            })
+          : makeRecord({
+              updatedAt: '2026-01-02T00:00:00.000Z',
+              status: 'partial',
+              lines: [{} as never],
+              run: {
+                state: 'cancelled',
+                provider: 'fake-slow',
+                leaseUntil: null, // the runner's final write clears it
+                hops: 0,
+                steps: 1,
+                lastError: null,
+              },
+            })
+      },
+    })
+
+    watchAnnotation('a1', { api, intervalMs: NEVER_MS, now: () => now })
+    await pollNow()
+    expect(getCount).toBe(1)
+    expect((await db.annotations.get('a1'))?.lines[0]).toBeNull()
+
+    // Still not terminal (lease is live) - a further pollNow() must fetch again.
+    await pollNow()
+    expect(getCount).toBe(2)
+    expect((await db.annotations.get('a1'))?.lines[0]).not.toBeNull()
+
+    // Terminal now (lease cleared) - stopped itself.
+    await pollNow()
+    expect(getCount).toBe(2)
+  })
+
+  it('a cancelled record with an already-expired (or absent) lease stops immediately', async () => {
+    let getCount = 0
+    const api = stubApi({
+      getAnnotation: async () => {
+        getCount += 1
+        return makeRecord({
+          run: {
+            state: 'cancelled',
+            provider: 'fake-slow',
+            leaseUntil: new Date(1_000_000 - 60_000).toISOString(),
+            hops: 0,
+            steps: 1,
+            lastError: null,
+          },
+        })
+      },
+    })
+
+    watchAnnotation('a1', { api, intervalMs: NEVER_MS, now: () => 1_000_000 })
+    await pollNow()
+    expect(getCount).toBe(1)
+    await pollNow()
+    expect(getCount).toBe(1) // stopped already
+  })
+
+  it('a done record with a null lease stops immediately', async () => {
+    let getCount = 0
+    const api = stubApi({
+      getAnnotation: async () => {
+        getCount += 1
+        return makeRecord({
+          run: { ...makeRecord().run, state: 'done', leaseUntil: null },
+        })
+      },
+    })
+
+    watchAnnotation('a1', { api, intervalMs: NEVER_MS })
+    await pollNow()
+    expect(getCount).toBe(1)
+    await pollNow()
+    expect(getCount).toBe(1) // stopped already
+  })
+
+  it('never resumes a cancelled record, even with a live lease that would otherwise look stalled once expired', async () => {
+    const now = 1_000_000
+    let resumeCalls = 0
+    const api = stubApi({
+      getAnnotation: async () =>
+        makeRecord({
+          run: {
+            state: 'cancelled',
+            provider: 'fake-slow',
+            leaseUntil: new Date(now + 5_000).toISOString(), // live
+            hops: 0,
+            steps: 1,
+            lastError: null,
+          },
+        }),
+      resumeAnnotation: async (): Promise<ResumeOutcome> => {
+        resumeCalls += 1
+        return { status: 'started', record: makeRecord() }
+      },
+    })
+
+    watchAnnotation('a1', { api, intervalMs: NEVER_MS, now: () => now })
+    await pollNow()
+    expect(resumeCalls).toBe(0)
+  })
+
   it('re-watching the same id replaces the previous watcher instead of running both', async () => {
     let firstCalls = 0
     let secondCalls = 0
