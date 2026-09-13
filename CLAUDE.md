@@ -5,12 +5,12 @@ and get a layered annotation (dialogue → line → sentence → word → syllab
 with romanization, gloss, tone, and learner notes. The Anthropic call is made
 server-side by Vercel Functions in `api/`; records live in Vercel Blob, with
 IndexedDB as the local read model synced through `src/sync`. Production is
-not yet deployed — every deploy is a Vercel **preview** (`PLAN.MD` M6).
+`https://thai.ler.dev` (behind Vercel Authentication).
 
 **Stack**: Vite + React 19 + TypeScript, Base UI + CSS Modules + Radix
 Colors, TanStack Router/Query/Form, Dexie (IndexedDB), Vercel Functions +
 Blob, `@anthropic-ai/sdk`, Vitest + Playwright, deployed via the Vercel CLI
-and Git pushes (preview only, for now).
+and Git pushes.
 
 ## Commands
 
@@ -20,7 +20,7 @@ and Git pushes (preview only, for now).
 - `pnpm check` — lint + typecheck + format:check (run before every commit)
 - `pnpm test` — Vitest unit tests (`src/`, `api/`, `scripts/`, `e2e/**/*.test.ts`)
 - `pnpm test:e2e` — Playwright against local `vite preview`, excludes `@live` specs
-- `pnpm test:e2e:vercel` — deploy a CLI preview and run only the `@live` specs
+- `pnpm test:e2e:vercel` — CLI preview + `@live` specs; the required gate before any push
 - `pnpm deploy:preview` — `vercel deploy --yes` (preview only)
 - `pnpm gen:fixture` — regenerate `src/fixtures/sample.annotation.json`
 
@@ -41,11 +41,12 @@ and Git pushes (preview only, for now).
    enter only through `src/sync` → `repo.mergeRemote*`.
 2. Never call the real Anthropic API from any test: the server runs the
    fake provider under test mode, the browser never talks to
-   `api.anthropic.com` (the e2e route guard fails the test); the one
-   exception, `e2e/live/real-model.spec.ts`, skips unless `E2E_REAL_MODEL=1`.
-3. Never run `vercel --prod` or `vercel deploy --prod`; never push to
-   `main`; never set `ALLOW_TEST_MODE` or `MODEL_PROVIDER=fake` in the
-   `production` Vercel environment.
+   `api.anthropic.com`; the one exception, `e2e/live/real-model.spec.ts`,
+   skips unless `E2E_REAL_MODEL=1`.
+3. Production deploys **only** by pushing `vercel` after the full gate
+   (`check`, `test`, `test:e2e`, `test:e2e:vercel`). Never `vercel --prod`
+   / `vercel deploy --prod`; never `ALLOW_TEST_MODE` or
+   `MODEL_PROVIDER=fake` in the `production` Vercel environment.
 4. No semicolons, single quotes, Prettier decides everything else
    (`semi: false, singleQuote: true, trailingComma: 'all'`).
 5. No `enum` (use `as const` unions); use `import type` for type-only
@@ -54,12 +55,11 @@ and Git pushes (preview only, for now).
    never reference Radix color vars directly.
 7. Never pass `thinking` or `temperature` to `messages.stream` (adaptive
    thinking is the default on Opus 5 / Sonnet 5); the server client always
-   sets `timeout` and `maxRetries`.
+   sets `timeout`/`maxRetries`.
 8. Bump `PROMPT_VERSION` and regenerate the fixture whenever the system
    prompt or schema changes.
-9. Commit after every verified task; push only once the full gate
-   (`pnpm check && pnpm test && pnpm test:e2e`, then `pnpm test:e2e:vercel`)
-   is green — a push always creates at least a Git preview.
+9. Commit after every verified task; push only after rule 3's full gate is
+   green — a push is a production deploy.
 10. Never merge or touch `main`; secrets live only in Vercel env and the
     gitignored `.env.local` / `.env.development.local`; all Blob access
     goes through `api/_lib/store` with `useCache: false`.

@@ -12,31 +12,33 @@ paths:
 
 The Vercel project (`thai-ler-dev`, `prj_mZ6rdu95y6OVvaHsmqpDkibFXKIv`,
 team `team_4mFhw0OaMx19wdVvfq9sEZuX`) is Git-connected to
-`tylerschloesser/thai.ler.dev` with production branch **`main`** — a push
-to `vercel` creates a Git-triggered preview (`source: "git"`), never a
-production deploy, as long as `main` never receives pushes (hard rule 10).
+`tylerschloesser/thai.ler.dev` with production branch **`vercel`** (M6
+cutover) — a push to `vercel` **is** the production deploy. `main` never
+receives pushes and is never merged or touched (hard rule 10).
 `pnpm test:e2e:vercel` (`scripts/e2e-vercel.sh`) deploys a separate,
 CLI-triggered preview (`source: "cli"`) with `vercel deploy --yes` and runs
-the `@live` Playwright suite against it. Production is not deployed at all
-until M6, when Tyler switches the dashboard's production branch to
-`vercel` — from that point on, a push to `vercel` **is** the production
-deploy. Never run `vercel --prod` or `vercel deploy --prod` under any
-circumstance, and never push to `main`.
+the `@live` Playwright suite against it — the CLI never targets production;
+only a Git push to `vercel` does. Never run `vercel --prod` or `vercel
+deploy --prod` under any circumstance (the `.claude/settings.json` deny
+entries for both stay in place even though deploys are Git-triggered), and
+never push to `main`.
 
-## Env vars per environment (before M6)
+## Env vars per environment
 
-| Var                               | production | preview                                                                           | development                                      |
-| --------------------------------- | ---------- | --------------------------------------------------------------------------------- | ------------------------------------------------ |
-| `ANTHROPIC_API_KEY`               | unset      | sensitive (since 2026-09-13; deployments built earlier carry the old plain value) | shell export only                                |
-| `INTERNAL_SECRET`                 | unset      | sensitive                                                                         | plain                                            |
-| `ALLOW_TEST_MODE`                 | **never**  | `1` (stored sensitive by CLI default)                                             | `1` (local plugin default, not a Vercel env var) |
-| `BLOB_READ_WRITE_TOKEN`           | unset      | auto (`thai-ler-dev-preview`)                                                     | auto (`thai-ler-dev-preview`)                    |
-| `VERCEL_AUTOMATION_BYPASS_SECRET` | auto       | auto                                                                              | n/a                                              |
+| Var                               | production                         | preview                                                                           | development                                      |
+| --------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `ANTHROPIC_API_KEY`               | sensitive (M6)                     | sensitive (since 2026-09-13; deployments built earlier carry the old plain value) | shell export only                                |
+| `INTERNAL_SECRET`                 | sensitive (M6)                     | sensitive                                                                         | plain                                            |
+| `ALLOW_TEST_MODE`                 | **never**                          | `1` (stored sensitive by CLI default)                                             | `1` (local plugin default, not a Vercel env var) |
+| `MODEL_PROVIDER`                  | unset (defaults to `anthropic`)    | unset (defaults to `anthropic`)                                                   | `anthropic` if key exported, else `fake`         |
+| `BLOB_READ_WRITE_TOKEN`           | auto (`thai-ler-dev-prod`, `iad1`) | auto (`thai-ler-dev-preview`)                                                     | auto (`thai-ler-dev-preview`)                    |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | auto                               | auto                                                                              | n/a                                              |
 
 Add or replace a value with `printf '%s' "$VALUE" | vercel env add NAME
-<env> [--sensitive]`; never `echo` a secret into a command, and never add
-anything to `production` before M6. Never set `ALLOW_TEST_MODE` or
-`MODEL_PROVIDER=fake` in the `production` environment at any milestone.
+<env> [--sensitive]`; never `echo` a secret into a command. Never set
+`ALLOW_TEST_MODE` or `MODEL_PROVIDER=fake` in the `production` environment
+at any milestone — `api/_lib/env.ts` refuses to start if `ALLOW_TEST_MODE`
+is ever `1` with `VERCEL_ENV=production`.
 
 ## Blob store
 
@@ -45,6 +47,58 @@ at creation: `thai-ler-dev-preview` (connected to `preview` **and**
 `development`, created in M0) and `thai-ler-dev-prod` (`production`,
 created in M6). All server reads pass `useCache: false`
 (`.claude/rules/api.md`); nothing in the browser ever sees a Blob URL.
+
+## Deployment Protection (Vercel Authentication)
+
+Vercel Authentication is set to **All Deployments**
+(`ssoProtection.deploymentType: "all"`) — every preview and the production
+deployment alike require signing in through Vercel SSO; there is no
+unauthenticated path to the app. `https://thai-ler-dev.vercel.app` (the
+production alias) and `https://thai.ler.dev` (the custom domain) both
+redirect to SSO for a signed-out visitor. This is what makes it safe to run
+the real `anthropic` provider and a real Blob store in production on a
+Hobby plan.
+
+## Web Application Firewall (WAF)
+
+One rate-limit rule protects `/api/*`: path starts with `/api/` **and**
+method is `POST` → 60 requests / 60s per IP, fixed window, action `deny`.
+Configured in the dashboard (Firewall), not in `vercel.json` — there is no
+project file to keep in sync with it, just this note.
+
+## Custom domain and DNS
+
+`thai.ler.dev` is the production URL, added to the Vercel project with
+`vercel domains add thai.ler.dev` and pointed at Vercel with a single
+record in the `ler.dev` Route 53 hosted zone: `A thai 76.76.21.21`. **Never
+move `ler.dev`'s nameservers to Vercel** — only the `thai` subdomain's `A`
+record is Vercel's; the rest of the zone (and any other `ler.dev`
+subdomains) stays on Route 53. Both `https://thai.ler.dev` and
+`https://thai-ler-dev.vercel.app` resolve to the same production
+deployment and sit behind Vercel Authentication — log in once per origin.
+
+## Post-push production check
+
+After every push to `vercel`, verify the deploy landed and is still gated:
+
+```sh
+curl -sI https://thai-ler-dev.vercel.app   # expect a 302 to vercel.com/sso-api
+E2E_TARGET=production PLAYWRIGHT_BASE_URL=https://thai-ler-dev.vercel.app \
+  pnpm exec playwright test e2e/live/health.spec.ts
+```
+
+The Playwright run needs `VERCEL_AUTOMATION_BYPASS_SECRET` exported (from
+`.env.local`) to get past Vercel Authentication; see
+`.claude/rules/testing.md` for what `E2E_TARGET=production` changes in the
+spec's own assertions.
+
+## Data migration (one-off, post-cutover)
+
+Tyler's P0 library lived on a different (AWS-hosted) origin. To move it
+into production: Settings → Export on the old origin, then Settings →
+Import once on `https://thai.ler.dev` — the outbox pushes the imported
+records to Blob on the next sync. The old AWS stack is left running until
+Tyler decommissions it separately; nothing in this repo depends on it.
 
 ## `.env*` file rules
 
@@ -72,7 +126,7 @@ Vercel runtime.
 
 ## Protection bypass secret
 
-Preview and (once deployed) production URLs sit behind Vercel Authentication.
+Every preview and production URL sits behind Vercel Authentication.
 `VERCEL_AUTOMATION_BYPASS_SECRET` lives only in the gitignored `.env.local`
 and lets `scripts/e2e-vercel.sh` / Playwright reach a preview with the
 `x-vercel-protection-bypass` header. Verify it still matches the project
@@ -119,7 +173,6 @@ step.
 
 `pnpm check && pnpm test && pnpm test:e2e` green → commit → `pnpm
 test:e2e:vercel` (CLI preview + `@live` suite) green → `git push origin
-vercel`. Do the full gate at least at the end of every milestone (M0, M1,
-M4, M5, M6 per PLAN.MD §5 at minimum); commit as soon as a task is verified
-but only push once the full gate is green, since a push always creates at
-least a Git preview today and will be a production deploy after M6.
+vercel` → the post-push production check above. Commit as soon as a task
+is verified; only push once the full gate is green, since a push is now
+the production deploy.

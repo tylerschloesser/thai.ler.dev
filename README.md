@@ -13,9 +13,9 @@ is a local read model that pulls and pushes through `src/sync`, so the app
 still reads offline. See `PLAN.MD` for the full P1 design and
 `docs/plans/P0.md` for the P0 (client-only) architecture this replaced.
 
-Production is **not yet deployed** — every deploy today is a Vercel
-**preview** URL, gated by Vercel Authentication (see
-[Deploying](#deploying)). `PLAN.MD`'s M6 is the production cutover.
+Production is **`https://thai.ler.dev`**, gated by Vercel Authentication
+like every preview (see [Deploying](#deploying)). `PLAN.MD`'s M6 record
+covers the cutover.
 
 Stack: Vite + React 19 + TypeScript, Base UI + CSS Modules + Radix Colors,
 TanStack Router/Query/Form, Dexie, Vercel Functions + Blob,
@@ -73,41 +73,44 @@ otherwise, and never run as part of the normal gate. `pnpm test:e2e:vercel`
 has run green twice against a CLI preview (7 passed, `real-model`
 skipped), plus once more with `E2E_REAL_MODEL=1` (8/8) — see
 `.claude/rules/testing.md` and `PLAN.MD` §10 for the recorded numbers.
-After the M6 production cutover, the one `@live` spec meaningful against
-production (test mode off) is:
+Against production (test mode is off there, so this is the one `@live`
+spec that's meaningful), run after every push to `vercel`:
 
 ```sh
 E2E_TARGET=production PLAYWRIGHT_BASE_URL=https://thai-ler-dev.vercel.app \
   pnpm exec playwright test e2e/live/health.spec.ts
 ```
 
-Production isn't deployed yet, so that run hasn't happened. See
-`.claude/rules/testing.md` for the mock contract, cookie-based test-mode
-overrides, and namespace isolation.
+See `.claude/rules/testing.md` for the mock contract, cookie-based
+test-mode overrides, and namespace isolation.
 
 ## Deploying
 
-The Vercel project is Git-connected (production branch `main`, which never
-receives pushes) and separately deployable via the CLI. A push to `vercel`
-creates a Git-triggered preview automatically; production is not deployed
-until `PLAN.MD`'s M6 cutover.
+The Vercel project is Git-connected with production branch **`vercel`** —
+pushing `vercel` after the full gate (`pnpm check && pnpm test && pnpm
+test:e2e`, then `pnpm test:e2e:vercel`) deploys production at
+`https://thai.ler.dev`. `main` never receives pushes and is never merged
+or touched. The CLI stays preview-only:
 
 ```sh
 pnpm deploy:preview   # `vercel deploy --yes` — preview only, always
 ```
 
-**`vercel --prod` / `vercel deploy --prod` must never be run.** See
-`.claude/rules/deploy.md` for the full Git/env/Blob-store picture.
+**`vercel --prod` / `vercel deploy --prod` must never be run** — deploys to
+production are Git-triggered only, never CLI-triggered. See
+`.claude/rules/deploy.md` for the full Git/env/Blob-store picture, the
+Deployment Protection and WAF settings, and the post-push production
+check.
 
 ### Environment variables
 
-| Variable                          | Where it lives                                                   | Notes                                                                                                                                                                                                                                                                                                                                                                                                   |
-| --------------------------------- | ---------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `ANTHROPIC_API_KEY`               | Vercel project → `preview` env (sensitive); shell export locally | Read at runtime only by `api/**` handlers — never inlined into the client bundle (`vite.config.ts` has no `envPrefix`). Falls back to the fake provider when unset locally.                                                                                                                                                                                                                             |
-| `INTERNAL_SECRET`                 | Vercel `preview`/`development`; defaults to `local-dev` locally  | Authenticates the runner's self-continuation hop (`POST /api/annotation/step`).                                                                                                                                                                                                                                                                                                                         |
-| `ALLOW_TEST_MODE`                 | Vercel `preview`/`development` only, **never** `production`      | Enables the `thai_*` test cookies and `/api/test/*`; `api/_lib/env.ts` refuses to start if this is ever `1` with `VERCEL_ENV=production`.                                                                                                                                                                                                                                                               |
-| `BLOB_READ_WRITE_TOKEN`           | Auto-provisioned per Blob store                                  | Used by `@vercel/blob`; irrelevant to the `disk`/`memory` backends.                                                                                                                                                                                                                                                                                                                                     |
-| `VERCEL_AUTOMATION_BYPASS_SECRET` | Local `.env.local` (gitignored)                                  | Lets Playwright and `scripts/e2e-vercel.sh` get past Vercel Authentication on preview URLs via an `x-vercel-protection-bypass` header. **Never** `vercel env pull` into `.env.local` — that command doesn't fetch this secret and would silently strand the file without it. Regenerate it in the dashboard (Settings → Deployment Protection → Protection Bypass for Automation) if it's ever missing. |
+| Variable                          | Where it lives                                                                                                                    | Notes                                                                                                                                                                                                                                                                                                                                                                                                                      |
+| --------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `ANTHROPIC_API_KEY`               | Vercel `production` **and** `preview` env (both sensitive); shell export locally                                                  | Read at runtime only by `api/**` handlers — never inlined into the client bundle (`vite.config.ts` has no `envPrefix`). Falls back to the fake provider when unset locally.                                                                                                                                                                                                                                                |
+| `INTERNAL_SECRET`                 | Vercel `production`, `preview`, `development` (all sensitive/plain per env); defaults to `local-dev` locally                      | Authenticates the runner's self-continuation hop (`POST /api/annotation/step`).                                                                                                                                                                                                                                                                                                                                            |
+| `ALLOW_TEST_MODE`                 | Vercel `preview`/`development` only, **never** `production`                                                                       | Enables the `thai_*` test cookies and `/api/test/*`; `api/_lib/env.ts` refuses to start if this is ever `1` with `VERCEL_ENV=production`.                                                                                                                                                                                                                                                                                  |
+| `BLOB_READ_WRITE_TOKEN`           | Auto-provisioned per Blob store (`thai-ler-dev-prod` for production, `thai-ler-dev-preview` for preview/development, both `iad1`) | Used by `@vercel/blob`; irrelevant to the `disk`/`memory` backends.                                                                                                                                                                                                                                                                                                                                                        |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | Local `.env.local` (gitignored)                                                                                                   | Lets Playwright and `scripts/e2e-vercel.sh` get past Vercel Authentication on preview **and production** URLs via an `x-vercel-protection-bypass` header. **Never** `vercel env pull` into `.env.local` — that command doesn't fetch this secret and would silently strand the file without it. Regenerate it in the dashboard (Settings → Deployment Protection → Protection Bypass for Automation) if it's ever missing. |
 
 See `.claude/rules/deploy.md` and `.claude/rules/api.md` for the complete
 per-environment table and the local-loader details
@@ -122,12 +125,24 @@ for leaks on every `pnpm test:e2e` run (`e2e/bundle.spec.ts` greps
 `dist/assets/*.js` for an API-key shape, a Blob read-write token, the
 browser-only SDK flag, and any reference to `api.anthropic.com`).
 
-Every preview and (once deployed) production deployment sits behind Vercel
+Every deployment — preview and production alike — sits behind Vercel
 Authentication ("All Deployments"), so a random visitor can't load the page
-at all without signing in through Vercel. That's what makes it safe to keep
-deploying previews before the M6 production cutover — see `PLAN.MD` §4.6
-for the full auth/secrets design (the hop's internal secret, the WAF rate
-limit, and the cutover's `production` branch tracking).
+at all without signing in through Vercel; that's true at both
+`https://thai.ler.dev` and the underlying
+`https://thai-ler-dev.vercel.app`. A WAF rule additionally rate-limits
+`POST /api/*` to 60 requests/minute per IP. See `PLAN.MD` §4.6 for the full
+auth/secrets design (the hop's internal secret, the WAF rate limit, and the
+`production` branch tracking) and `.claude/rules/deploy.md` for the
+Deployment Protection, WAF, and DNS details.
+
+## Moving your P0 library
+
+The P0 library that lived on the old (AWS-hosted) origin doesn't move
+itself — it's a one-off, by hand: **Settings → Export** on the old origin
+to get a snapshot file, then **Settings → Import** once on
+`https://thai.ler.dev`. The outbox pushes the imported records to Blob on
+the next sync, same as any other local write. The old AWS stack keeps
+running until it's decommissioned separately; nothing here depends on it.
 
 ## Operations
 

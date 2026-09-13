@@ -200,19 +200,18 @@ green twice in a row against CLI preview `thai-ler-9zvm97vro` (7 passed,
 2 lines). `live/hop` measured `run.hops = 2`, `run.steps = 3` on the real
 Vercel runtime with no `508` — see PLAN.MD §10 "Corrected during M4" for
 the full record. `live/health` has also passed against the Git-built
-preview of `015067d`. Production itself is still **not** deployed (M6);
-don't report a production `live/health` result until that run has actually
-happened. Once it has (`E2E_TARGET=production`, below), report it the same
-way — a `pnpm test:e2e:vercel`/production result, a measured hop count, or
-a real-model latency/cost number is only fact once it's recorded in
-PLAN.MD §10/§4.2.
+preview of `015067d`. See PLAN.MD §10/§4.2 for the recorded production
+`live/health` result from the M6 cutover — a `pnpm test:e2e:vercel`/
+production result, a measured hop count, or a real-model latency/cost
+number is only fact once it's recorded there.
 
-### Against production (`E2E_TARGET=production`, post-M6 only)
+### Against production (`E2E_TARGET=production`)
 
-Once the M6 cutover has happened, only `e2e/live/health.spec.ts` is
-meaningful against production (test mode is off there, so every other
-`@live` spec's cookie-based overrides are no-ops and `real-model`-style
-costs are real money). Run it with both the target URL and the env switch:
+Only `e2e/live/health.spec.ts` is meaningful against production (test mode
+is off there, so every other `@live` spec's cookie-based overrides are
+no-ops and `real-model`-style costs are real money). Run it with both the
+target URL and the env switch after every push to `vercel` (a push is the
+production deploy — this is the post-push check, `.claude/rules/deploy.md`):
 
 ```sh
 E2E_TARGET=production PLAYWRIGHT_BASE_URL=https://thai-ler-dev.vercel.app \
@@ -223,8 +222,9 @@ E2E_TARGET=production PLAYWRIGHT_BASE_URL=https://thai-ler-dev.vercel.app \
 assertions to expect `testMode: false`, the real `provider`, and `404` from
 `/api/test/seed` / `/api/test/namespace` instead of preview's
 `ALLOW_TEST_MODE=1` shape — it does not change `playwright.config.ts` or
-any other spec. Production is not deployed as of this writing; don't run
-this against it until M6.
+any other spec. The run needs `VERCEL_AUTOMATION_BYPASS_SECRET` exported
+(from `.env.local`) to get past Vercel Authentication on the production
+URL, same as any preview.
 
 ## Vitest includes
 
