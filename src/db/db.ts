@@ -56,13 +56,22 @@ export interface MetaRow {
  * Keyed by `key` (`` `${kind}:${id}` ``, e.g. `dialogue:<id>` or
  * `settings:all` — see `manifestKey` in `src/lib/records.ts`, the same
  * format as a manifest entry key) so repeated writes to the same record
- * before it's drained coalesce into one row via `put`.
+ * before it's drained coalesce into one row via `put`. `rev` is a fresh
+ * `newId()` stamped on every enqueue — `updatedAt` is for ordering/display
+ * only and is not unique enough to key `clearOutbox`'s compare-and-delete
+ * on: two writes to the same record in the same millisecond (e.g. a create
+ * immediately followed by a rename) would otherwise share an `updatedAt`,
+ * and a push racing the second write could delete the second write's row
+ * using the first write's stale `updatedAt`. `rev` is intentionally not
+ * part of the `outbox` index (`key, updatedAt` — no schema/version bump
+ * needed for it).
  */
 export interface OutboxRow {
   key: string
   kind: RecordKind
   id: string
   updatedAt: string
+  rev: string
 }
 
 /** Bump whenever the shape of `LineAnnotation` (and friends) changes. */

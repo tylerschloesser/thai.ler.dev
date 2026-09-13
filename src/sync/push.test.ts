@@ -97,7 +97,9 @@ describe('push', () => {
     const api = stubApi({
       putRecord: async (_kind, record) => {
         // Simulate a local edit landing while this PUT is in flight — it
-        // re-enqueues the same outbox key with a newer updatedAt.
+        // re-enqueues the same outbox key with a fresh rev (clearOutbox is
+        // keyed on rev, not updatedAt, since the two writes could share the
+        // same millisecond).
         await renameDialogue(dialogue.id, 'Renamed mid-flight')
         return record
       },

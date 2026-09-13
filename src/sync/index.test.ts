@@ -162,9 +162,9 @@ describe('startSync', () => {
         putRecord: async (_kind, record) => {
           putCalls += 1
           if (putCalls === 1) {
-            // Lands while this very PUT is in flight, bumping the outbox
-            // row's updatedAt so `clearOutbox` (src/db/repo.ts) declines to
-            // delete it after this push cycle.
+            // Lands while this very PUT is in flight, re-enqueueing the
+            // outbox row with a fresh `rev` so `clearOutbox` (src/db/repo.ts)
+            // declines to delete it after this push cycle.
             await renameDialogue(dialogue.id, 'Renamed mid-flight')
           }
           return record

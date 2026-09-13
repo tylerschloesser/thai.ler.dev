@@ -61,8 +61,9 @@ async function mergeRemoteWinner(
 /**
  * Drains the outbox: for each queued row, load the current local record,
  * `PUT` it, merge the server's LWW winner back in (never re-enqueues — see
- * `repo.mergeRemote*`), then `clearOutbox` (a no-op if the row changed
- * again mid-push, per its compare-and-delete semantics). A failed `PUT`
+ * `repo.mergeRemote*`), then `clearOutbox(row.key, row.rev)` (a no-op if
+ * the row was re-enqueued — even at the same `updatedAt` — again mid-push,
+ * per its rev-keyed compare-and-delete semantics). A failed `PUT`
  * (anything but `offline`) leaves that one row queued and keeps draining
  * the rest; an `offline` failure stops draining immediately, since every
  * subsequent request would fail the same way. PLAN.MD §4.5.
@@ -78,14 +79,14 @@ export async function push(deps: PushDeps = {}): Promise<PushCounts> {
     if (local === null) {
       // The record it referred to is gone locally (shouldn't normally
       // happen since deletes are soft) — nothing to push.
-      await clearOutbox(row.key, row.updatedAt)
+      await clearOutbox(row.key, row.rev)
       continue
     }
 
     try {
       const winner = await api.putRecord(row.kind, local)
       await mergeRemoteWinner(row.kind, winner)
-      await clearOutbox(row.key, row.updatedAt)
+      await clearOutbox(row.key, row.rev)
       pushed += 1
     } catch (err) {
       if (err instanceof ApiError && err.kind === 'offline') {

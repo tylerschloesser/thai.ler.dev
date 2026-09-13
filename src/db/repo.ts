@@ -44,7 +44,10 @@ function deriveTitle(sourceText: string): string {
  * open transaction automatically as long as `db.outbox` is one of the
  * tables passed to `db.transaction(...)`), so a write and its outbox entry
  * are always atomic. Uses `put`, so repeated writes to the same record
- * before it's drained coalesce into one row with the latest `updatedAt`.
+ * before it's drained coalesce into one row with the latest `updatedAt` —
+ * but a fresh `rev` (`newId()`) every time, since two writes can share the
+ * same `updatedAt` (same-millisecond) and `clearOutbox` needs a value that
+ * is unique per write, not just per instant, to compare-and-delete safely.
  * `mergeRemote*` below must never call this — an incoming remote write is
  * not a local change and must not echo back to the server.
  */
@@ -53,7 +56,13 @@ export async function enqueueOutbox(
   id: string,
   updatedAt: string,
 ): Promise<void> {
-  await db.outbox.put({ key: manifestKey(kind, id), kind, id, updatedAt })
+  await db.outbox.put({
+    key: manifestKey(kind, id),
+    kind,
+    id,
+    updatedAt,
+    rev: newId(),
+  })
 }
 
 /** A snapshot of every row currently queued for push. */
@@ -62,20 +71,17 @@ export async function takeOutbox(): Promise<OutboxRow[]> {
 }
 
 /**
- * Removes `key` from the outbox, but only if its `updatedAt` is still what
- * the caller last saw — i.e. only if nothing wrote to that record again
- * while the push for this row was in flight. If a newer local write landed
- * mid-push, `enqueueOutbox` already overwrote the row with a fresher
- * `updatedAt`, this delete is a no-op, and the row stays queued for the
- * next push.
+ * Removes `key` from the outbox, but only if its `rev` is still what the
+ * caller last saw — i.e. only if nothing wrote to that record again while
+ * the push for this row was in flight. If a newer local write landed
+ * mid-push, `enqueueOutbox` already overwrote the row with a fresh `rev`
+ * (even if it shares the same `updatedAt` as the write being pushed), this
+ * delete is a no-op, and the row stays queued for the next push.
  */
-export async function clearOutbox(
-  key: string,
-  updatedAt: string,
-): Promise<void> {
+export async function clearOutbox(key: string, rev: string): Promise<void> {
   await db.transaction('rw', db.outbox, async () => {
     const row = await db.outbox.get(key)
-    if (row && row.updatedAt === updatedAt) {
+    if (row && row.rev === rev) {
       await db.outbox.delete(key)
     }
   })

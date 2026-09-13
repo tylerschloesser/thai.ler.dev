@@ -4,9 +4,10 @@ A personal Thai-learning web app: paste a dialogue, run it through Claude,
 and get a layered annotation (dialogue → line → sentence → word → syllable)
 with romanization, gloss, tone, and learner notes. Everything is stored
 client-side in IndexedDB. P1 is moving the Anthropic call to `api/` Vercel
-Functions; as of M0, `api/` has a health endpoint and a Blob-store
-abstraction, but annotation still runs by calling Anthropic directly from
-the browser, and production is not yet deployed (previews only).
+Functions: as of M1/M2 the server core (annotate/job/sync handlers, the
+runner, Vercel Blob storage) and the client sync layer (`src/sync/`) exist,
+but until M3 wires them in, the browser still annotates by calling
+Anthropic directly, and production is not yet deployed (previews only).
 
 **Stack**: Vite + React 19 + TypeScript, Base UI + CSS Modules + Radix
 Colors, TanStack Router/Query/Form, Dexie (IndexedDB), `@anthropic-ai/sdk`,
@@ -32,8 +33,8 @@ and Git pushes (preview only, for now).
 - `e2e/` — Playwright specs, fixtures, the Anthropic SSE mock, `live/` (`@live` specs)
 - `scripts/` — `e2e-vercel.sh`, `gen-fixture.ts`, `load-env.ts`, `vite-api-plugin.ts`
 - `src/` — `app/` (router, providers, theme, debug hook), `routes/`
-  (file-based), `lib/`, `styles/` + `ui/`, `db/`, `llm/` + `fixtures/`,
-  `features/` — see docs/plans/P0.md §3
+  (file-based), `lib/`, `styles/` + `ui/`, `db/`, `sync/`, `llm/` +
+  `fixtures/`, `features/` — see docs/plans/P0.md §3
 - `docs/plans/` — as-built plan records (`P0.md`); see `PLAN.MD` for P1
 - `public/` — static assets (favicon)
 

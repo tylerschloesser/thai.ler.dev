@@ -159,6 +159,75 @@ describe('pull', () => {
     expect(await getAnnotation('a1')).toEqual(remoteAnnotation)
   })
 
+  it('a manifest entry that ties the local updatedAt but is a tombstone wins the tie (mirrors pickWinner)', async () => {
+    await db.dialogues.put({
+      id: 'd1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      deletedAt: null,
+      title: 'Local (live)',
+      sourceText: 'Hello',
+      currentAnnotationId: null,
+    })
+    const remoteTombstone = {
+      id: 'd1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z', // exact tie with the local copy
+      deletedAt: '2026-01-02T00:00:00.000Z',
+      title: 'Local (live)',
+      sourceText: 'Hello',
+      currentAnnotationId: null,
+    }
+    const api = stubApi({
+      getManifest: async () =>
+        manifest({
+          [manifestKey('dialogue', 'd1')]: {
+            kind: 'dialogue',
+            id: 'd1',
+            updatedAt: '2026-01-02T00:00:00.000Z',
+            deletedAt: '2026-01-02T00:00:00.000Z',
+          },
+        }),
+      getRecord: async () => remoteTombstone,
+    })
+
+    const counts = await pull({ api })
+    expect(counts).toEqual({ pulled: 1, skipped: 0 })
+    expect((await getDialogue('d1'))?.deletedAt).toBe(
+      '2026-01-02T00:00:00.000Z',
+    )
+  })
+
+  it('a manifest entry that ties the local updatedAt and is not a tombstone keeps local (mirrors pickWinner)', async () => {
+    await db.dialogues.put({
+      id: 'd1',
+      createdAt: '2026-01-01T00:00:00.000Z',
+      updatedAt: '2026-01-02T00:00:00.000Z',
+      deletedAt: null,
+      title: 'Local (live)',
+      sourceText: 'Hello',
+      currentAnnotationId: null,
+    })
+    const api = stubApi({
+      getManifest: async () =>
+        manifest({
+          [manifestKey('dialogue', 'd1')]: {
+            kind: 'dialogue',
+            id: 'd1',
+            updatedAt: '2026-01-02T00:00:00.000Z', // exact tie, no tombstone
+            deletedAt: null,
+          },
+        }),
+      getRecord: async () => {
+        throw new Error('should not fetch: a plain tie keeps local')
+      },
+    })
+
+    const counts = await pull({ api })
+    expect(counts).toEqual({ pulled: 0, skipped: 1 })
+    expect((await getDialogue('d1'))?.title).toBe('Local (live)')
+  })
+
   it('pulls settings when local has none yet', async () => {
     const remoteSettings = [
       { key: 'theme', value: 'dark', updatedAt: '2026-01-01T00:00:00.000Z' },

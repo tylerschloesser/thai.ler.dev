@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { db } from './db'
 import type { AnnotationRecord, Dialogue, SettingRow } from './db'
 import {
@@ -16,6 +16,7 @@ import {
 } from './repo'
 import { setSetting } from './settings'
 import { manifestKey } from '../lib/records'
+import * as time from '../lib/time'
 
 beforeEach(async () => {
   await db.dialogues.clear()
@@ -110,30 +111,45 @@ describe('outbox enqueue on every write path', () => {
 })
 
 describe('clearOutbox', () => {
-  it('deletes the row when updatedAt is unchanged', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+  })
+
+  it('deletes the row when rev is unchanged', async () => {
     const dialogue = await createDialogue('Hello')
     const [row] = await takeOutbox()
     if (!row) throw new Error('expected an outbox row')
-    await clearOutbox(row.key, row.updatedAt)
+    await clearOutbox(row.key, row.rev)
     expect(await takeOutbox()).toHaveLength(0)
     void dialogue
   })
 
-  it('keeps the row queued if a newer write landed mid-push', async () => {
+  it('keeps the row queued if a newer write landed mid-push, even at the exact same updatedAt', async () => {
+    // `createDialogue` and the "mid-push" `renameDialogue` can land in the
+    // same millisecond in real use, giving both outbox writes an identical
+    // `updatedAt` — stub the clock so this test hits that case every time,
+    // rather than only ~1 in 10 runs. `rev` (not `updatedAt`) is what makes
+    // `clearOutbox`'s compare-and-delete safe regardless.
+    vi.spyOn(time, 'nowIso').mockReturnValue('2026-01-01T00:00:00.000Z')
+
     const dialogue = await createDialogue('Hello')
     const [row] = await takeOutbox()
     if (!row) throw new Error('expected an outbox row')
 
     // A write lands "mid-push" — after push read this outbox row, before
-    // it clears it — bumping updatedAt.
+    // it clears it — at the exact same `updatedAt` as the row push captured.
     await renameDialogue(dialogue.id, 'Renamed mid-push')
+    const [midPushRow] = await takeOutbox()
+    if (!midPushRow) throw new Error('expected the outbox row to remain')
+    expect(midPushRow.updatedAt).toBe(row.updatedAt) // same instant, by construction
+    expect(midPushRow.rev).not.toBe(row.rev) // but a fresh rev
 
-    // clearOutbox is called with the *stale* updatedAt push captured.
-    await clearOutbox(row.key, row.updatedAt)
+    // clearOutbox is called with the *stale* rev push captured.
+    await clearOutbox(row.key, row.rev)
 
     const remaining = await takeOutbox()
     expect(remaining).toHaveLength(1)
-    expect(remaining[0]?.updatedAt).not.toBe(row.updatedAt)
+    expect(remaining[0]?.rev).toBe(midPushRow.rev)
   })
 })
 
