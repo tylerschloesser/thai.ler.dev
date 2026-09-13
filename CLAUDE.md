@@ -41,8 +41,8 @@ and Git pushes (preview only, for now).
    enter only through `src/sync` → `repo.mergeRemote*`.
 2. Never call the real Anthropic API from any test: the server runs the
    fake provider under test mode, the browser never talks to
-   `api.anthropic.com` (the e2e route guard fails the test), and the
-   real-model smoke (`E2E_REAL_MODEL=1`) arrives in M4.
+   `api.anthropic.com` (the e2e route guard fails the test); the one
+   exception, `e2e/live/real-model.spec.ts`, skips unless `E2E_REAL_MODEL=1`.
 3. Never run `vercel --prod` or `vercel deploy --prod`; never push to
    `main`; never set `ALLOW_TEST_MODE` or `MODEL_PROVIDER=fake` in the
    `production` Vercel environment.

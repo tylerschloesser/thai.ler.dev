@@ -62,10 +62,14 @@ pnpm test:e2e:vercel  # deploy a fresh CLI preview and run only the @live specs
 server always uses the fake provider in test mode
 (`MODEL_PROVIDER=fake`/the `thai_model` cookie), and `e2e/fixtures.ts`
 installs a guard on `https://api.anthropic.com/**` that fails any test
-whose browser page requests it. `pnpm test:e2e:vercel` runs the `@live`
-specs (`e2e/live/`) against a real Vercel preview deployment and its real
-Blob store — it costs no Anthropic usage (still the fake provider by
-default) and a small, budgeted number of Blob operations. See
+whose browser page requests it. `pnpm test:e2e:vercel` runs the five
+`@live` specs (`e2e/live/{health,annotate,hop,sync,real-model}.spec.ts`)
+against a real Vercel preview deployment and its real Blob store — still
+the fake provider by default, and a small, budgeted number of Blob
+operations (≈ 40 advanced / ≈ 80 simple ops per run, `PLAN.MD` §4.3). The
+one exception is `live/real-model`, which calls the real Anthropic API and
+only runs when invoked as `E2E_REAL_MODEL=1 pnpm test:e2e:vercel` — skipped
+otherwise, and never run as part of the normal gate. See
 `.claude/rules/testing.md` for the mock contract, cookie-based test-mode
 overrides, and namespace isolation.
 

@@ -125,7 +125,11 @@ single value in the `meta` table (`getDeviceId()`, `src/db/meta.ts`),
 included once per `Snapshot` (see below) for future multi-device sync, not
 per-row. Hard-purge tombstones older than 90 days on startup
 (`purgeTombstones` in `db.ts`, called fire-and-forget from
-`src/app/debug.ts`).
+`src/app/debug.ts`): in the same transaction as the `bulkDelete` of each
+stale `dialogues`/`annotations` row, it also `bulkDelete`s that record's
+`outbox` row (by `manifestKey(kind, id)`) if one is still queued — a
+hard-purged record must never resurrect itself by pushing a stale write for
+an id the server (and every other device) has already forgotten.
 
 ## Outbox invariants (`repo.ts`'s `enqueueOutbox`/`takeOutbox`/`clearOutbox`)
 
@@ -217,9 +221,15 @@ rows)`. Whatever changed is fetched and merged via `repo.mergeRemote*`,
 - `poll.ts`: `watchAnnotation(id)` polls `GET /api/annotation` every 4s
   while a run is active, merging every response in; if the lease looks
   stalled (`leaseUntil` more than 15s in the past) and lines remain, it
-  calls `POST /api/annotation/resume` at most once a minute. `pollNow()`
-  ticks every currently-watched annotation immediately — the e2e speed
-  hook (`window.__thai.sync.pollNow`, `.claude/rules/testing.md`).
+  calls `POST /api/annotation/resume` at most once a minute. Stops itself
+  only once `isTerminal(run, now)` — exported for `DialogueView`'s own
+  resume-on-open watch effect to share the exact same rule — is true:
+  `run.state ∈ done | cancelled` **and** `leaseUntil` is `null` or expired,
+  not bare `state` alone (PLAN.MD §10 "Corrected during M3" — a cancelled
+  record with a still-live lease is mid-flight, not finished, and is never
+  auto-resumed while in that state). `pollNow()` ticks every
+  currently-watched annotation immediately — the e2e speed hook
+  (`window.__thai.sync.pollNow`, `.claude/rules/testing.md`).
 - `index.ts`'s `startSync()`: a one-time "enqueue every existing local
   record" migration (guarded by `meta.syncInitialized`, so Tyler's
   pre-sync library gets pushed once), then pull → push on load, pull (and

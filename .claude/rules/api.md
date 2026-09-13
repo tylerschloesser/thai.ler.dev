@@ -66,6 +66,12 @@ zod-validates a body, throwing `HttpError('bad_request', ...)` on failure.
 store | internal`, mapped to `400 | 404 | 401 | 409 | 502 | 502 | 500`.
 Every response — success or error — carries `cache-control: private,
 no-store`; never let a handler return without going through `json`/`fail`.
+`failFromError` special-cases `StoreSuspendedError` (`api/_lib/store/
+vercel.ts`, thrown when `@vercel/blob` throws `BlobStoreSuspendedError` for
+a Hobby store over its monthly quota) into a `fail('store', <readable
+message>)` naming the suspension and that the library still works offline
+— never let a raw `BlobStoreSuspendedError` reach a handler's `catch`
+unmapped.
 `api/_lib/jsonBody.ts`'s `jsonBody(res)` is a test-only helper (a typed
 `res.json()`) for handler tests reading arbitrary response shapes.
 
@@ -227,6 +233,19 @@ MAX_HOPS` (3), call `hop()` once — its result (true/false) is not itself
    never be fixed by hopping, so it always ends the job rather than leaving
    it stalled. `run.lastError` is exclusively for this case; a per-line
    failure only ever lives in `lineErrors[i]`, never in `run.lastError`.
+
+**Cancel and lease** (`api/annotation/cancel.ts`, PLAN.MD §10 "Corrected
+during M3"): `POST /api/annotation/cancel?id=` sets `run.state:
+'cancelled'` but **leaves a live `leaseUntil` untouched** — clearing it
+immediately would make the client's `isTerminal` (`src/sync/poll.ts`) treat
+the record as finished before the in-flight step's own final write has
+persisted whatever lines it already completed. Only when no runner
+currently holds the lease (`leaseUntil` already `null` or expired) does
+cancel clear it itself. The runner's own final write always clears
+`leaseUntil` to `null` once it observes `'cancelled'` (step 5 above), which
+is what actually makes the record terminal. A cancelled record is never
+auto-resumed (step 6's hop and `poll.ts`'s stalled-lease resume both skip
+`state === 'cancelled'`).
 
 `api/_lib/hop.ts`'s `hop(deps, annotationId)`: `POST
 ${base}/api/annotation/step?id=`, where `base` is `https://$VERCEL_URL` if

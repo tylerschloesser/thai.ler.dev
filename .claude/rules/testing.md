@@ -55,18 +55,49 @@ Fixtures (`e2e/fixtures.ts`):
 See `.claude/rules/api.md`'s cookie table for the full cookie contract
 (shared by these fixtures and by `api/**` handler tests).
 
-## Current spec list (fast suite, as of M3a)
+## Current spec list (fast suite, as of M3b — run `ls e2e/*.spec.ts` to check)
 
 `e2e/{smoke,theme,deep-link,word-popover,library,annotate,persistence,
-errors,settings,api-health,bundle}.spec.ts` (11 specs) plus
-`e2e/live/health.spec.ts` (`@live`, run separately — see below). `bundle`
-reads the built `dist/assets/*.js` with plain `node:fs` (no page/network)
-and asserts no Anthropic key, no `vercel_blob_rw_` token, no
-`dangerouslyAllowBrowser`, and no `api.anthropic.com` reference ever reaches
-the client bundle — it's skipped when `PLAYWRIGHT_BASE_URL` is set (no local
-`dist/` to read against a remote target). More job-lifecycle specs
-(survives-tab-close, hop, resume-on-open, cancel) are still to come; don't
-describe them as existing until they land.
+errors,settings,api-health,bundle,sync,job-survives-tab,job-hop,
+job-resume-on-open,job-cancel}.spec.ts` (16 specs). `bundle` reads the built
+`dist/assets/*.js` with plain `node:fs` (no page/network) and asserts no
+Anthropic key, no `vercel_blob_rw_` token, no `dangerouslyAllowBrowser`, and
+no `api.anthropic.com` reference ever reaches the client bundle — it's
+skipped when `PLAYWRIGHT_BASE_URL` is set (no local `dist/` to read against
+a remote target).
+
+### Job-lifecycle specs and the `isTerminal` convention
+
+`job-survives-tab`, `job-hop`, `job-resume-on-open`, and `job-cancel`
+(PLAN.MD §4.8, M3b) all drive a job through `src/sync/poll.ts`'s exported
+`isTerminal(run, now)` — `run.state ∈ done | cancelled` **and** the lease is
+`null` or expired — rather than a hand-rolled `state` check, because that's
+the exact predicate the app itself uses to decide when to stop polling
+(`DialogueView`'s resume-on-open effect uses the same export). Conventions
+shared across them:
+
+- `fakeDelay(ms)` (→ `thai_fake_delay_ms`) makes each line take long enough
+  to observe a mid-flight state (`job-survives-tab`, `job-cancel`) or to
+  combine with `stepBudget(ms)` (→ `thai_step_budget_ms`) to force ≥ 2
+  steps and ≥ 1 hop (`job-hop`).
+- `job-resume-on-open` uses `seedServer` instead — a `running` record with
+  an expired lease and null lines exists only on the server (no local
+  IndexedDB copy), so opening `/d/:id` is what triggers the client's own
+  resume-on-open watch, not a job the test itself started.
+- `job-cancel` asserts a cancelled record keeps its already-completed lines
+  and that Retry (`resume`) still works afterward — the M3b regression this
+  spec was written to catch (PLAN.MD §10 "Corrected during M3"). It drives
+  this entirely through the client (`e2e/testUtils.ts`'s `tickPoll` →
+  `window.__thai.sync.pollNow()` + `readAnnotationByDialogue` reading local
+  IndexedDB), polling until the local record settles on `cancelled` **with**
+  at least one completed line — not just the cancel endpoint's own
+  immediate (still-all-null) response — then double-checks the same state
+  landed server-side via one `GET /api/annotation`. `job-survives-tab`
+  (which closes every page of the triggering context) instead polls purely
+  over a fresh `newContextSameNs()`'s `context.request`, since there's no
+  page left to run a client poller at all — checking `run.state === 'done'`
+  there is checking the server's own truth, not the client's `isTerminal`
+  gate.
 
 ## `scripts/sync-integration.test.ts` (M1↔M2 acceptance, PLAN.MD §5)
 
@@ -128,9 +159,45 @@ longer, and `extraHTTPHeaders` adds `x-vercel-protection-bypass` /
 `x-vercel-set-bypass-cookie` so requests pass Vercel Authentication.
 `e2e/api-health.spec.ts` (fast) and `e2e/live/health.spec.ts` (`@live`)
 both assert `GET /api/health`'s shape and that unknown `/api/*` is a JSON
-`404`, not the SPA's `index.html`. Only `live/health.spec.ts` exists today;
-`E2E_REAL_MODEL=1` (a real-model smoke) and the rest of the `@live` suite
-(`annotate`, `hop`, `sync`) are M4 additions, not yet wired up.
+`404`, not the SPA's `index.html`.
+
+`e2e/live/` (M4, PLAN.MD §5) holds five specs plus one shared helper
+module:
+
+- `health` — as above.
+- `annotate` — fake provider, real `waitUntil` + real Blob; a fresh context
+  sees the job reach `done`.
+- `hop` — `fake-slow` + a tiny `thai_step_budget_ms` forces ≥ 2 hops on the
+  real Vercel runtime, proving the bypass header + `INTERNAL_SECRET`
+  self-invocation path actually works past Vercel's recursion protection.
+- `sync` — two contexts sharing one namespace: create in one, pull in the
+  other.
+- `real-model` — the **one** spec that calls the real Anthropic API, and
+  only when explicitly asked: `test.skip(process.env.E2E_REAL_MODEL !==
+'1', ...)` is the first line of the test body, so it's a no-op
+  ("skipped") on every normal `pnpm test:e2e:vercel` run. Clears the
+  `thai_model` cookie so the job falls through to the preview's real
+  `MODEL_PROVIDER`, posts a 2-line dialogue on `claude-sonnet-5`, and
+  validates every resulting line against `LineAnnotationSchema`. Run it
+  once per milestone that touches `src/llm` or `api/_lib/providers` (≈
+  $0.05 per run).
+- `e2e/live/liveUtils.ts` — shared helpers (`buildDialogue`,
+  `withSyntheticLines`, `postAnnotate`, `getAnnotation`,
+  `pollAnnotationDone`) that drive `/api/annotate` + `/api/annotation`
+  purely over `APIRequestContext`, no page — kept separate from
+  `e2e/testUtils.ts` (page-only, `window.__thai`-based) because a job like
+  `live/hop` must never have a page open: a page's own client poller could
+  call `POST /api/annotation/resume` on what it sees as a stalled job and
+  fork a second lineage instead of letting the one under test finish.
+
+The live suite's estimated Blob cost is in PLAN.MD §4.3: ≈ 40 advanced +
+≈ 80 simple ops for one full `@live` run (all 5 specs) — that's why it
+should run at milestone ends, not on every push, and why `real-model` is
+opt-in separately from the rest. As of M4 landing, the suite has not yet
+been run against a real Vercel preview by an executor — don't report a
+`pnpm test:e2e:vercel` result, a measured hop count, or a real-model
+latency/cost number as fact until that run has actually happened and is
+recorded in PLAN.MD §10/§4.2.
 
 ## Vitest includes
 

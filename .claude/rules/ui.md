@@ -83,8 +83,13 @@ the job done).
 ## Sync section (`SyncStatus`, `src/features/settings/`)
 
 Settings' "Sync" section is a labelled `<section aria-label="Sync">`
-containing a `<dl>` status pair (last pull as relative time, pending
-pushes), an inline error line when the last sync attempt failed, and two
+containing a `<dl>` status pair (last pull as relative time — via
+`src/app/useNow.ts`'s `useNow()`, which re-reads `Date.now()` on a 30s
+interval so the "N ago" text stays fresh without computing it during
+render (an oxlint `react(purity)` violation); reach for `useNow` any time a
+component needs to re-render on the passage of time rather than an event —
+and pending pushes), an inline error line when the last sync attempt
+failed, and two
 actions: "Sync now" (manual `useSync().syncNow()`) and "Rebuild sync index"
 (`POST /api/sync/manifest/rebuild` then a fresh pull) — maintenance for
 when the manifest and the record blobs drift. Disable each button while its
