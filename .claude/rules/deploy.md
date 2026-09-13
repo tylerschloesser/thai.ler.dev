@@ -118,6 +118,14 @@ Keep the file at that exact path, and never register a service worker from
 the current app without replacing it deliberately.
 `e2e/sw-kill-switch.spec.ts` covers it.
 
+Caveat: Vercel Authentication covers `/sw.js` too. The update check only
+gets the kill switch if the browser sends a Vercel Authentication cookie
+for `thai.ler.dev`. A browser whose old worker answers every navigation
+may never finish the SSO login that sets that cookie, and it then gets a
+`302`, the update fails, and the old worker stays. The fix there is a
+manual one: DevTools → Application → Service workers → **Unregister**,
+then reload.
+
 ## `.env*` file rules
 
 `.env.local` and `.env.development.local` are both gitignored (`.env*`)

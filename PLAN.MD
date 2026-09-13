@@ -1511,7 +1511,11 @@ export async function pull(): Promise<PullCounts> {
   now a self-unregistering kill switch that clears the old precache and
   reloads open tabs; it leaves IndexedDB alone. `e2e/sw-kill-switch.spec.ts`
   covers it. §4.10 had not considered state the old origin left in
-  browsers.
+  browsers. Production `7d25f1d` serves `/sw.js` as
+  `application/javascript` behind SSO, so the kill switch only reaches a
+  browser that sends a Vercel Authentication cookie for `thai.ler.dev`. One
+  whose old worker blocks the SSO login needs a manual Unregister in
+  DevTools.
 
 ---
 
