@@ -798,7 +798,7 @@ Acceptance: `@live` green twice in a row; measured numbers in this file.
 Acceptance: `pnpm test:e2e:vercel` green; verifier confirms every path and
 command claim in `CLAUDE.md`, rules and `README.md` is true.
 
-### M6 — Production cutover `[ ]` (executor + Tyler; §4.10)
+### M6 — Production cutover `[~]` (executor + Tyler; §4.10)
 
 Acceptance: `https://thai-ler-dev.vercel.app` requires SSO and annotates a
 real dialogue for Tyler; `live/health` passes against it with the bypass
@@ -1493,6 +1493,15 @@ export async function pull(): Promise<PullCounts> {
   (post-cutover flow), §4.10 step 3, §6.1 rules 3/9/10, §6.4 and §7.1 say
   `vercel`, read `main`; the worktree pre-flight is now `--is-ancestor
   origin/main`.
+- **First production deploy, measured** (2026-09-13): pushing `main` at
+  `fb74525` after the full gate built `dpl_9No8PFKTBUdrXwWmJpzXTxu1vS35`
+  with `target: production`, and it went READY with the aliases
+  `thai.ler.dev` and `thai-ler-dev.vercel.app`. Vercel issued the
+  `thai.ler.dev` certificate only once that deployment existed (it had
+  said "No certificates found" before). Both origins answer `302` to
+  `vercel.com/sso-api` for a signed-out visitor. `E2E_TARGET=production`
+  `live/health` passed against `https://thai-ler-dev.vercel.app` (5 passed,
+  2.2 s). The frozen `vercel` push (`83be132`) built one last Git preview.
 
 ---
 
