@@ -55,11 +55,14 @@ Fixtures (`e2e/fixtures.ts`):
 See `.claude/rules/api.md`'s cookie table for the full cookie contract
 (shared by these fixtures and by `api/**` handler tests).
 
-## Current spec list (fast suite, as of M3b — run `ls e2e/*.spec.ts` to check)
+## Current spec list (fast suite, as of M6 — run `ls e2e/*.spec.ts` to check)
 
 `e2e/{smoke,theme,deep-link,word-popover,library,annotate,persistence,
 errors,settings,api-health,bundle,sync,job-survives-tab,job-hop,
-job-resume-on-open,job-cancel}.spec.ts` (16 specs). `bundle` reads the built
+job-resume-on-open,job-cancel,sw-kill-switch}.spec.ts` (17 specs).
+`sw-kill-switch` registers `public/sw.js` the way the retired AWS app did
+and asserts it unregisters itself, empties Cache Storage and leaves
+IndexedDB alone (`.claude/rules/deploy.md`). `bundle` reads the built
 `dist/assets/*.js` with plain `node:fs` (no page/network) and asserts no
 Anthropic key, no `vercel_blob_rw_` token, no `dangerouslyAllowBrowser`, and
 no `api.anthropic.com` reference ever reaches the client bundle — it's

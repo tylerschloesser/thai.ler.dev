@@ -1502,6 +1502,16 @@ export async function pull(): Promise<PullCounts> {
   `vercel.com/sso-api` for a signed-out visitor. `E2E_TARGET=production`
   `live/health` passed against `https://thai-ler-dev.vercel.app` (5 passed,
   2.2 s). The frozen `vercel` push (`83be132`) built one last Git preview.
+- **The AWS app's service worker outlived the stack.** After the cutover,
+  Tyler's browser still showed the old app ("Couldn't load your
+  translations."). The retired app (`archive/aws-main`) had registered a
+  `vite-plugin-pwa` worker at `/sw.js` with scope `/`, and it kept serving
+  its precached shell. Its update check failed because `/sw.js` fell
+  through the SPA rewrite to `index.html` (`text/html`). `public/sw.js` is
+  now a self-unregistering kill switch that clears the old precache and
+  reloads open tabs; it leaves IndexedDB alone. `e2e/sw-kill-switch.spec.ts`
+  covers it. §4.10 had not considered state the old origin left in
+  browsers.
 
 ---
 

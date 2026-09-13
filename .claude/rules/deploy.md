@@ -106,6 +106,18 @@ Export there, then Settings → Import once on `https://thai.ler.dev` — the
 outbox pushes the imported records to Blob on the next sync. The old AWS
 stack is torn down; nothing in this repo depends on it.
 
+## The old service worker (`public/sw.js`)
+
+The retired AWS app registered a `vite-plugin-pwa` service worker at
+`/sw.js` (scope `/`) on `thai.ler.dev`. A browser that still has it keeps
+serving that app's precached shell, which shows "Couldn't load your
+translations." `public/sw.js` is a kill switch. On the browser's next
+update check it replaces the old worker, deletes the old precache,
+unregisters itself, and reloads open tabs. It never touches IndexedDB.
+Keep the file at that exact path, and never register a service worker from
+the current app without replacing it deliberately.
+`e2e/sw-kill-switch.spec.ts` covers it.
+
 ## `.env*` file rules
 
 `.env.local` and `.env.development.local` are both gitignored (`.env*`)
