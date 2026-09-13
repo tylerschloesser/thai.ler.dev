@@ -772,7 +772,7 @@ profile → complete.
 
 Acceptance: `@live` green twice in a row; measured numbers in this file.
 
-### M5 — Hardening and docs `[ ]`
+### M5 — Hardening and docs `[~]`
 
 1. Accessibility of the new status states (`aria-live` on stalled/resumed;
    Sync section labels).
