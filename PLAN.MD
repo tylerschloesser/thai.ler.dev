@@ -1370,6 +1370,21 @@ export async function pull(): Promise<PullCounts> {
   `kill()` left an orphaned vite server behind.
 - `POST /api/annotation/resume` decides "busy" from the lease alone. A live
   lease means a runner holds the record, whatever `run.state` says.
+- **Pull diff vs. tombstone ties** (found by the M1↔M2 integration test,
+  `scripts/sync-integration.test.ts`). The §10 "Sync pull" snippet skips
+  an entry when `local >= entry.updatedAt`, which contradicts `pickWinner`:
+  a tombstone wins a tie. So a delete carrying the same timestamp as the
+  local copy never reached this browser. `pull.ts` now also fetches when
+  the timestamps are equal and only the remote copy is a tombstone.
+  Settings have no tombstones and keep the plain `>` comparison.
+- **Outbox compare-and-delete needs a revision, not `updatedAt`.** A test
+  that failed about 1 run in 10 found this (`repo.sync.test.ts`, "newer
+  write landed mid-push"). Two writes to the same record in one millisecond
+  share an `updatedAt`. `clearOutbox(key, updatedAt)` then deleted the
+  _newer_ write's row, so that change was never pushed. Every outbox row
+  now carries a unique `rev`, created on each enqueue, and `clearOutbox`
+  compares that. `rev` is not indexed, so the store stays `key, updatedAt`
+  and Dexie v2 is unchanged.
 
 ---
 
