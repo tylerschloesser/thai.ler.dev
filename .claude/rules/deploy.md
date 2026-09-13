@@ -23,15 +23,15 @@ until M6, when Tyler switches the dashboard's production branch to
 deploy. Never run `vercel --prod` or `vercel deploy --prod` under any
 circumstance, and never push to `main`.
 
-## Env vars per environment (as of M0)
+## Env vars per environment (before M6)
 
-| Var                               | production | preview                                                            | development                                      |
-| --------------------------------- | ---------- | ------------------------------------------------------------------ | ------------------------------------------------ |
-| `ANTHROPIC_API_KEY`               | unset      | plain (P0 var; becomes sensitive when Tyler provides the real key) | shell export only                                |
-| `INTERNAL_SECRET`                 | unset      | sensitive                                                          | plain                                            |
-| `ALLOW_TEST_MODE`                 | **never**  | `1` (stored sensitive by CLI default)                              | `1` (local plugin default, not a Vercel env var) |
-| `BLOB_READ_WRITE_TOKEN`           | unset      | auto (`thai-ler-dev-preview`)                                      | auto (`thai-ler-dev-preview`)                    |
-| `VERCEL_AUTOMATION_BYPASS_SECRET` | auto       | auto                                                               | n/a                                              |
+| Var                               | production | preview                                                                           | development                                      |
+| --------------------------------- | ---------- | --------------------------------------------------------------------------------- | ------------------------------------------------ |
+| `ANTHROPIC_API_KEY`               | unset      | sensitive (since 2026-09-13; deployments built earlier carry the old plain value) | shell export only                                |
+| `INTERNAL_SECRET`                 | unset      | sensitive                                                                         | plain                                            |
+| `ALLOW_TEST_MODE`                 | **never**  | `1` (stored sensitive by CLI default)                                             | `1` (local plugin default, not a Vercel env var) |
+| `BLOB_READ_WRITE_TOKEN`           | unset      | auto (`thai-ler-dev-preview`)                                                     | auto (`thai-ler-dev-preview`)                    |
+| `VERCEL_AUTOMATION_BYPASS_SECRET` | auto       | auto                                                                              | n/a                                              |
 
 Add or replace a value with `printf '%s' "$VALUE" | vercel env add NAME
 <env> [--sensitive]`; never `echo` a secret into a command, and never add
@@ -90,6 +90,19 @@ rather than trying to recreate it from the CLI. For a one-off check against
 a specific deployment, `vercel curl <path> --deployment <url>` (beta, CLI
 59.16.0) adds the protection bypass itself and needs no `.env.local` at
 all — Playwright still needs `VERCEL_AUTOMATION_BYPASS_SECRET` exported.
+
+## Function limit and `.vercelignore`
+
+Hobby allows **at most 12 Serverless Functions per deployment**. Every
+`.ts` file under `api/` that is not inside a `_`-prefixed directory counts,
+tests included. The real routes use **11**, so a new route needs a merge
+or a Pro plan. `.vercelignore` keeps `api/**/*.test.ts` out of the upload,
+along with `.env*`, `.vercel`, `.data` and `.claude`. Without it the deploy
+fails with "No more than 12 Serverless Functions can be added to a
+Deployment on the Hobby plan". Vercel's Node builder also type-checks
+`api/` without `@types/node` or strict mode and prints `TS2591` and
+optional-property errors. Those errors are advisory, since the build still
+completes; `tsc -b` in `pnpm check` is the real typecheck.
 
 ## Getting a preview URL
 

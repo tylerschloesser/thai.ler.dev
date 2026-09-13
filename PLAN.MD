@@ -329,6 +329,17 @@ route handler did), sleeps 300 ms in `fake-slow`, and honours
 20–60 s. With warm-up + 6-wide fan-out, 8 lines ≈ 60–120 s, 20 lines ≈
 150–250 s — usually one step. Long pastes hop once or twice.
 
+**Measured in M4** (`live/real-model`, preview `thai-ler-ko3z03nvw`,
+2026-09-13): a 2-line dialogue on `claude-sonnet-5` took **≈ 112 s** end to
+end. The warm-up line runs alone until its first stream event, and then the
+second joins it. Usage was 176 input, **12 761 output** (≈ 6.4 K per line,
+thinking included) and 3 408 cache-read tokens, about $0.20. So output per
+line is roughly 3× the estimate above, and a line takes about 1–2 minutes,
+not 20–60 s. A 20-line paste therefore needs several 300 s steps, meaning
+hops and possibly a resume-on-open after `MAX_HOPS`. That is exactly the
+path the runner was built for. Opus 5 was not measured (the smoke uses
+Sonnet by design).
+
 ### 4.3 Blob layout, store abstraction, budget
 
 **Store**: one private store per environment pair —
@@ -1428,6 +1439,30 @@ export async function pull(): Promise<PullCounts> {
   progress only at flushes, which come every 25 s, on a line error, and at
   step end. That is the Blob budget trade-off from §4.3, so a short job may
   show nothing until it finishes.
+
+**Corrected during M4** (first Vercel runs, 2026-09-13):
+
+- **Hobby allows at most 12 Serverless Functions per deployment**, and
+  every `.ts` file under `api/` outside a `_`-prefixed directory counts,
+  **tests included**. The first deploy of the merged tree failed with "No
+  more than 12 Serverless Functions can be added to a Deployment on the
+  Hobby plan": the 11 real routes plus 10 handler tests next to them. A
+  `.vercelignore` now keeps `api/**/*.test.ts` out of the upload, along
+  with `.env*`, `.vercel`, `.data` and `.claude`, whatever Vercel's
+  defaults are. **11 of 12 functions are used, so a new route needs a
+  merge or a Pro plan.**
+- **Vercel's Node builder type-checks `api/` on its own terms.** It uses no
+  `@types/node` and no strict mode, and prints `TS2591`/optional-property
+  errors, but the build still completes. These errors are advisory. The
+  real typecheck is `tsc -b` in `pnpm check`.
+- **Hop on Vercel measured:** `live/hop` (14 lines, 2 s fake lines, 3 s
+  step budget) finished with `run.hops = 2`, `run.steps = 3` on two
+  consecutive runs, as derived locally. No 508 occurred, so `MAX_HOPS`
+  stays 3. Both `@live` runs were green (7 passed, `real-model` skipped,
+  about 11 s) on preview `thai-ler-9zvm97vro`.
+- `ANTHROPIC_API_KEY` in `preview` has been **sensitive** since
+  2026-09-13T05:24Z. Deployments built before that still carry the old
+  plain value, so the real-model smoke runs on a fresh preview.
 
 ---
 

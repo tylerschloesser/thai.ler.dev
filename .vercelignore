@@ -1,0 +1,17 @@
+# Files the Vercel CLI must not upload (on top of Vercel's own defaults).
+
+# Every .ts file under api/ that is not under an _-prefixed directory
+# becomes a Serverless Function, and Hobby allows at most 12 per deployment.
+# Handler tests live next to their handlers, so keep them out of the upload.
+api/**/*.test.ts
+
+# Secrets and local state never leave this machine.
+.env*
+.vercel
+.data
+.claude
+
+# Test output.
+test-results
+playwright-report
+coverage
