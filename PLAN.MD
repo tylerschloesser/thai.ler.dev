@@ -769,7 +769,7 @@ Acceptance: fast suite green locally; `pnpm test:e2e:vercel` green
 the tab within 2 s, reopen `/d/:id` a minute later in a second browser
 profile → complete.
 
-### M4 — Live suite, hop verification, real-model smoke `[~]`
+### M4 — Live suite, hop verification, real-model smoke `[x]`
 
 1. `e2e/live/{annotate,hop,sync,real-model}.spec.ts`; namespace teardown;
    `scripts/e2e-vercel.sh` prints the preview URL and the Blob usage
@@ -1471,6 +1471,14 @@ export async function pull(): Promise<PullCounts> {
   102 s, and the IndexedDB in profile B agreed. The Git-triggered build of
   `015067d` honoured `.vercelignore` (READY, 11 functions), and
   `live/health` passed against it.
+
+- **Blob usage, measured** (dashboard, 2026-09-13, `thai-ler-dev-preview`,
+  after the M0 store tests, three `@live` runs, the dry runs and the M3
+  walk): **128 advanced / 223 simple ops**, 29.4 kB stored (the walk left
+  its records under `v1/`), 460 kB transferred. That is about 6 % of the
+  2 000 advanced-op allowance, so the §4.3 budget holds with room to
+  spare. The per-job and per-live-run estimates there were, if anything,
+  pessimistic.
 
 ---
 
