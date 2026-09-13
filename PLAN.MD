@@ -1480,6 +1480,20 @@ export async function pull(): Promise<PullCounts> {
   spare. The per-job and per-live-run estimates there were, if anything,
   pessimistic.
 
+**Corrected during M6** (production cutover, 2026-09-13):
+
+- **The production branch is `main`, not `vercel`.** §4.10 step 2 had
+  Tyler switch Branch Tracking to `vercel`. Instead, once Tyler had torn
+  down the AWS stack, `main` became the Vercel branch. The old `main`
+  (`9c57ce7`, the AWS/CDK app) is kept as the tag `archive/aws-main`.
+  `vercel` merged it with `-s ours` (`83be132`), which leaves `vercel`'s
+  tree unchanged, so `main` fast-forwarded without a force push. The
+  project's `productionBranch` stays `main`. `vercel` is retired and
+  frozen at `83be132`, and GitHub's default branch is `main`. Where §4.9
+  (post-cutover flow), §4.10 step 3, §6.1 rules 3/9/10, §6.4 and §7.1 say
+  `vercel`, read `main`; the worktree pre-flight is now `--is-ancestor
+  origin/main`.
+
 ---
 
 ## 11. Sources consulted (planning date; full notes in the session's research files)

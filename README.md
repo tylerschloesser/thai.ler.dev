@@ -74,7 +74,7 @@ has run green twice against a CLI preview (7 passed, `real-model`
 skipped), plus once more with `E2E_REAL_MODEL=1` (8/8) — see
 `.claude/rules/testing.md` and `PLAN.MD` §10 for the recorded numbers.
 Against production (test mode is off there, so this is the one `@live`
-spec that's meaningful), run after every push to `vercel`:
+spec that's meaningful), run after every push to `main`:
 
 ```sh
 E2E_TARGET=production PLAYWRIGHT_BASE_URL=https://thai-ler-dev.vercel.app \
@@ -86,11 +86,12 @@ test-mode overrides, and namespace isolation.
 
 ## Deploying
 
-The Vercel project is Git-connected with production branch **`vercel`** —
-pushing `vercel` after the full gate (`pnpm check && pnpm test && pnpm
+The Vercel project is Git-connected with production branch **`main`** —
+pushing `main` after the full gate (`pnpm check && pnpm test && pnpm
 test:e2e`, then `pnpm test:e2e:vercel`) deploys production at
-`https://thai.ler.dev`. `main` never receives pushes and is never merged
-or touched. The CLI stays preview-only:
+`https://thai.ler.dev`. The `vercel` branch, where P0 and P1 were built,
+is retired; the AWS/CDK app that used to live on `main` is kept as the tag
+`archive/aws-main`. The CLI stays preview-only:
 
 ```sh
 pnpm deploy:preview   # `vercel deploy --yes` — preview only, always
@@ -137,12 +138,12 @@ Deployment Protection, WAF, and DNS details.
 
 ## Moving your P0 library
 
-The P0 library that lived on the old (AWS-hosted) origin doesn't move
-itself — it's a one-off, by hand: **Settings → Export** on the old origin
-to get a snapshot file, then **Settings → Import** once on
-`https://thai.ler.dev`. The outbox pushes the imported records to Blob on
-the next sync, same as any other local write. The old AWS stack keeps
-running until it's decommissioned separately; nothing here depends on it.
+The P0 library lives in the browser's IndexedDB on whichever origin you
+used before the cutover (a P0 preview URL), and doesn't move itself —
+it's a one-off, by hand: **Settings → Export** there to get a snapshot
+file, then **Settings → Import** once on `https://thai.ler.dev`. The
+outbox pushes the imported records to Blob on the next sync, same as any
+other local write.
 
 ## Operations
 
@@ -200,8 +201,8 @@ printf '%s' "$ANTHROPIC_API_KEY" | vercel env add ANTHROPIC_API_KEY production -
 ```
 
 Never `echo` the key into a command (it would land in shell history).
-After rotating, redeploy (`pnpm deploy:preview`, or push `vercel` for a Git
-preview) — an already-running Vercel Function keeps its old environment
+After rotating, redeploy (`pnpm deploy:preview` for a preview; production
+picks the new value up on the next push to `main`) — an already-running Vercel Function keeps its old environment
 until the next deploy.
 
 ### Hop 508 (Vercel recursion protection)

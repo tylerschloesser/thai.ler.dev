@@ -210,7 +210,7 @@ number is only fact once it's recorded there.
 Only `e2e/live/health.spec.ts` is meaningful against production (test mode
 is off there, so every other `@live` spec's cookie-based overrides are
 no-ops and `real-model`-style costs are real money). Run it with both the
-target URL and the env switch after every push to `vercel` (a push is the
+target URL and the env switch after every push to `main` (a push is the
 production deploy — this is the post-push check, `.claude/rules/deploy.md`):
 
 ```sh

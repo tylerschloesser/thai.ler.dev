@@ -5,7 +5,7 @@ and get a layered annotation (dialogue → line → sentence → word → syllab
 with romanization, gloss, tone, and learner notes. The Anthropic call is made
 server-side by Vercel Functions in `api/`; records live in Vercel Blob, with
 IndexedDB as the local read model synced through `src/sync`. Production is
-`https://thai.ler.dev` (behind Vercel Authentication).
+`https://thai.ler.dev` (Vercel Authentication), deployed by pushing `main`.
 
 **Stack**: Vite + React 19 + TypeScript, Base UI + CSS Modules + Radix
 Colors, TanStack Router/Query/Form, Dexie (IndexedDB), Vercel Functions +
@@ -43,7 +43,7 @@ and Git pushes.
    fake provider under test mode, the browser never talks to
    `api.anthropic.com`; the one exception, `e2e/live/real-model.spec.ts`,
    skips unless `E2E_REAL_MODEL=1`.
-3. Production deploys **only** by pushing `vercel` after the full gate
+3. Production deploys **only** by pushing `main` after the full gate
    (`check`, `test`, `test:e2e`, `test:e2e:vercel`). Never `vercel --prod`
    / `vercel deploy --prod`; never `ALLOW_TEST_MODE` or
    `MODEL_PROVIDER=fake` in the `production` Vercel environment.
@@ -60,9 +60,9 @@ and Git pushes.
    prompt or schema changes.
 9. Commit after every verified task; push only after rule 3's full gate is
    green — a push is a production deploy.
-10. Never merge or touch `main`; secrets live only in Vercel env and the
-    gitignored `.env.local` / `.env.development.local`; all Blob access
-    goes through `api/_lib/store` with `useCache: false`.
+10. Push only `main` (`vercel` is retired); secrets live only in Vercel
+    env and the gitignored `.env.local` / `.env.development.local`; all
+    Blob access goes through `api/_lib/store` with `useCache: false`.
 
 ## Rule files
 

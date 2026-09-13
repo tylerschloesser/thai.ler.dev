@@ -12,16 +12,22 @@ paths:
 
 The Vercel project (`thai-ler-dev`, `prj_mZ6rdu95y6OVvaHsmqpDkibFXKIv`,
 team `team_4mFhw0OaMx19wdVvfq9sEZuX`) is Git-connected to
-`tylerschloesser/thai.ler.dev` with production branch **`vercel`** (M6
-cutover) — a push to `vercel` **is** the production deploy. `main` never
-receives pushes and is never merged or touched (hard rule 10).
-`pnpm test:e2e:vercel` (`scripts/e2e-vercel.sh`) deploys a separate,
-CLI-triggered preview (`source: "cli"`) with `vercel deploy --yes` and runs
-the `@live` Playwright suite against it — the CLI never targets production;
-only a Git push to `vercel` does. Never run `vercel --prod` or `vercel
-deploy --prod` under any circumstance (the `.claude/settings.json` deny
-entries for both stay in place even though deploys are Git-triggered), and
-never push to `main`.
+`tylerschloesser/thai.ler.dev` with production branch **`main`** — a push
+to `main` **is** the production deploy. `pnpm test:e2e:vercel`
+(`scripts/e2e-vercel.sh`) deploys a separate, CLI-triggered preview
+(`source: "cli"`) with `vercel deploy --yes` and runs the `@live`
+Playwright suite against it — the CLI never targets production; only a
+Git push to `main` does. Never run `vercel --prod` or `vercel deploy
+--prod` under any circumstance (the `.claude/settings.json` deny entries
+for both stay in place even though deploys are Git-triggered).
+
+Branch history: until M6 the Vercel code lived on `vercel`, while `main`
+held an unrelated AWS/CDK app. Once that stack was torn down (2026-09-13),
+the old `main` was tagged `archive/aws-main` (`9c57ce7`) and merged into
+`vercel` with `-s ours` (`83be132`, tree unchanged), so `main`
+fast-forwarded to the Vercel code without a force push. `vercel` is
+retired and frozen at `83be132`. Don't push it: it would only create a
+stray preview.
 
 ## Env vars per environment
 
@@ -79,7 +85,7 @@ deployment and sit behind Vercel Authentication — log in once per origin.
 
 ## Post-push production check
 
-After every push to `vercel`, verify the deploy landed and is still gated:
+After every push to `main`, verify the deploy landed and is still gated:
 
 ```sh
 curl -sI https://thai-ler-dev.vercel.app   # expect a 302 to vercel.com/sso-api
@@ -94,11 +100,11 @@ spec's own assertions.
 
 ## Data migration (one-off, post-cutover)
 
-Tyler's P0 library lived on a different (AWS-hosted) origin. To move it
-into production: Settings → Export on the old origin, then Settings →
-Import once on `https://thai.ler.dev` — the outbox pushes the imported
-records to Blob on the next sync. The old AWS stack is left running until
-Tyler decommissions it separately; nothing in this repo depends on it.
+Tyler's P0 library lives in the IndexedDB of whichever origin he used
+before M6 (a P0 preview URL). To move it into production: Settings →
+Export there, then Settings → Import once on `https://thai.ler.dev` — the
+outbox pushes the imported records to Blob on the next sync. The old AWS
+stack is torn down; nothing in this repo depends on it.
 
 ## `.env*` file rules
 
@@ -173,6 +179,6 @@ step.
 
 `pnpm check && pnpm test && pnpm test:e2e` green → commit → `pnpm
 test:e2e:vercel` (CLI preview + `@live` suite) green → `git push origin
-vercel` → the post-push production check above. Commit as soon as a task
+main` → the post-push production check above. Commit as soon as a task
 is verified; only push once the full gate is green, since a push is now
 the production deploy.

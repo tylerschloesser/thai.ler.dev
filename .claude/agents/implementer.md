@@ -11,8 +11,9 @@ files whose `paths` glob covers the files you're touching before writing
 code — they are the source of truth for conventions in this repo.
 
 Before touching anything in a worktree, run `git merge-base --is-ancestor
-origin/vercel HEAD || exit 1` and confirm `git log -1` shows a P1 commit
-(agent worktrees have branched from `main` before); if either check fails,
+origin/main HEAD || exit 1` and confirm `git log -1` shows the commit your
+brief names (agent worktrees have branched from a stale base before); if
+either check fails,
 stop and report. Never write `.env.local` or `.env.development.local`, and
 never set `ALLOW_TEST_MODE` in the Vercel `production` environment.
 
