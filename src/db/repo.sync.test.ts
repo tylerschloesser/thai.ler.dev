@@ -1,11 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import { db } from './db'
+import { db, LEGACY_RUN } from './db'
 import type { AnnotationRecord, Dialogue, SettingRow } from './db'
 import {
   clearOutbox,
-  createAnnotation,
   createDialogue,
-  finalizeAnnotation,
   mergeRemoteAnnotation,
   mergeRemoteDialogue,
   mergeRemoteSettings,
@@ -16,7 +14,37 @@ import {
 } from './repo'
 import { setSetting } from './settings'
 import { manifestKey } from '../lib/records'
+import { newId } from '../lib/ids'
+import { nowIso } from '../lib/time'
 import * as time from '../lib/time'
+
+/** A minimal, directly-`db.annotations.add`-ed record for tests that just
+ * need *some* existing annotation id to point `setCurrentAnnotation` at —
+ * `createAnnotation` (the deprecated browser-pipeline writer) was removed
+ * in M3. */
+async function addTestAnnotation(
+  dialogueId: string,
+): Promise<AnnotationRecord> {
+  const now = nowIso()
+  const annotation: AnnotationRecord = {
+    id: newId(),
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    dialogueId,
+    model: 'claude-opus-5',
+    promptVersion: 1,
+    schemaVersion: 1,
+    lines: [null],
+    lineErrors: [null],
+    status: 'partial',
+    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
+    durationMs: 0,
+    run: { ...LEGACY_RUN },
+  }
+  await db.annotations.add(annotation)
+  return annotation
+}
 
 beforeEach(async () => {
   await db.dialogues.clear()
@@ -52,12 +80,7 @@ describe('outbox enqueue on every write path', () => {
   it('setCurrentAnnotation enqueues the dialogue', async () => {
     const dialogue = await createDialogue('Hello')
     await db.outbox.clear()
-    const annotation = await createAnnotation({
-      dialogueId: dialogue.id,
-      model: 'claude-opus-5',
-      promptVersion: 1,
-      lineCount: 1,
-    })
+    const annotation = await addTestAnnotation(dialogue.id)
     await setCurrentAnnotation(dialogue.id, annotation.id)
     const rows = await takeOutbox()
     expect(rows).toHaveLength(1)
@@ -74,39 +97,6 @@ describe('outbox enqueue on every write path', () => {
       kind: 'settings',
       id: 'all',
     })
-  })
-
-  it('createAnnotation does not enqueue outbox (deprecated, pre-finalize)', async () => {
-    const dialogue = await createDialogue('Hello')
-    await db.outbox.clear()
-    await createAnnotation({
-      dialogueId: dialogue.id,
-      model: 'claude-opus-5',
-      promptVersion: 1,
-      lineCount: 1,
-    })
-    expect(await takeOutbox()).toHaveLength(0)
-  })
-
-  it('finalizeAnnotation sets run.state done and enqueues the annotation', async () => {
-    const dialogue = await createDialogue('Hello')
-    const annotation = await createAnnotation({
-      dialogueId: dialogue.id,
-      model: 'claude-opus-5',
-      promptVersion: 1,
-      lineCount: 1,
-    })
-    expect(annotation.run.state).toBe('running')
-    await db.outbox.clear()
-
-    await finalizeAnnotation(annotation.id)
-    const finalized = await db.annotations.get(annotation.id)
-    expect(finalized?.run.state).toBe('done')
-    expect(finalized?.status).toBe('complete')
-
-    const rows = await takeOutbox()
-    expect(rows).toHaveLength(1)
-    expect(rows[0]).toMatchObject({ kind: 'annotation', id: annotation.id })
   })
 })
 

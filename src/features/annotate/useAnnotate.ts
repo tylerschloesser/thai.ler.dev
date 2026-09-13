@@ -1,176 +1,24 @@
-import { useCallback, useEffect, useState, useSyncExternalStore } from 'react'
+import { useCallback } from 'react'
 import { useMutation } from '@tanstack/react-query'
 import { useLiveQuery } from 'dexie-react-hooks'
-import { buildAnthropicClient } from '../../app/anthropic'
 import type { AnnotationRecord, Dialogue } from '../../db/db'
 import {
-  createAnnotation as repoCreateAnnotation,
-  finalizeAnnotation,
   getAnnotation,
   getDialogue,
-  setCurrentAnnotation,
-  upsertAnnotationLine,
+  mergeRemoteAnnotation,
+  mergeRemoteDialogue,
 } from '../../db/repo'
-import {
-  annotateDialogue,
-  resumeAnnotation,
-  type PipelineOptions,
-  type PipelineRepo,
-  type PipelineResult,
-} from '../../llm/pipeline'
-import type { LineAnnotation } from '../../llm/schema'
+import { getSetting } from '../../db/settings'
+import { api, ApiError } from '../../sync/api'
+import { isLeaseStalled } from '../../sync/poll'
 
 // ---------------------------------------------------------------------------
-// Cross-component run registry
-// ---------------------------------------------------------------------------
-//
-// Composer starts a dialogue's annotation and navigates to /d/$id
-// immediately (docs/plans/P0.md §4.3) - the pipeline keeps running after Composer
-// unmounts (it's a plain async call, not tied to a component's lifetime).
-// DialogueView then mounts its own `useAnnotate(dialogueId)` and must be
-// able to (a) observe that a run is already in flight rather than starting
-// a duplicate one, and (b) cancel it. `activeRuns` + the tiny pub-sub below
-// are the whole mechanism for that; the actual per-line progress is read
-// back from Dexie (via `useLiveQuery`), which already updates reactively in
-// every component regardless of who started the run.
-
-interface RunEntry {
-  controller: AbortController
-}
-
-const activeRuns = new Map<string, RunEntry>()
-const runListeners = new Map<string, Set<() => void>>()
-
-function notifyRun(dialogueId: string): void {
-  for (const listener of runListeners.get(dialogueId) ?? []) listener()
-}
-
-function subscribeRun(dialogueId: string, listener: () => void): () => void {
-  let set = runListeners.get(dialogueId)
-  if (!set) {
-    set = new Set()
-    runListeners.set(dialogueId, set)
-  }
-  set.add(listener)
-  return () => {
-    set.delete(listener)
-    if (set.size === 0) runListeners.delete(dialogueId)
-  }
-}
-
-function isAnnotationRunning(dialogueId: string): boolean {
-  return activeRuns.has(dialogueId)
-}
-
-/** Aborts the in-flight run for `dialogueId`, if any - a no-op otherwise. */
-export function cancelAnnotation(dialogueId: string): void {
-  activeRuns.get(dialogueId)?.controller.abort()
-}
-
-// ---------------------------------------------------------------------------
-// repo.ts -> PipelineRepo adapter
-// ---------------------------------------------------------------------------
-
-/**
- * Thin adapter from `src/db/repo.ts` (the only write path to IndexedDB) to
- * the pipeline's `PipelineRepo` interface. Also keeps `dialogue.
- * currentAnnotationId` pointed at the record being written, so any reader
- * (this hook, DialogueList's status chip, DialogueView) can find it via a
- * live query on the dialogue alone.
- */
-function toPipelineRepo(dialogueId: string): PipelineRepo {
-  return {
-    async createAnnotation(input) {
-      const record = await repoCreateAnnotation({
-        dialogueId: input.dialogueId,
-        model: input.model,
-        promptVersion: input.promptVersion,
-        lineCount: input.lineCount,
-      })
-      await setCurrentAnnotation(dialogueId, record.id)
-      return { annotationId: record.id }
-    },
-    async upsertLine(input) {
-      // `warnings` (invariant-check notes from src/llm/schema.ts) have no
-      // home yet - AnnotationRecord (src/db/db.ts) doesn't carry a
-      // per-line warnings field. Dropped here rather than invented, since
-      // src/db is out of scope for this feature.
-      if (input.error !== null) {
-        await upsertAnnotationLine(input.annotationId, input.lineIndex, {
-          error: input.error,
-        })
-        return
-      }
-      if (input.line !== null) {
-        await upsertAnnotationLine(input.annotationId, input.lineIndex, {
-          line: input.line,
-        })
-        return
-      }
-      // Shouldn't happen (pipeline.ts always pairs a null line with a
-      // non-null error), but never silently drop a line update.
-      await upsertAnnotationLine(input.annotationId, input.lineIndex, {
-        error: 'Unknown error (no line and no error reported)',
-      })
-    },
-    async finalize(input) {
-      // repo.finalizeAnnotation only ever sets status: 'complete'. A
-      // partial result needs no extra write - createAnnotation already
-      // left the record at 'partial', and nothing here changes that.
-      // Usage/duration aren't persisted: repo.ts exposes no setter for
-      // them (out of scope here - src/db is owned by M2/M3).
-      if (input.status === 'complete') {
-        await finalizeAnnotation(input.annotationId)
-      }
-    },
-  }
-}
-
-async function runPipeline(
-  dialogueId: string,
-  run: (opts: PipelineOptions) => Promise<PipelineResult>,
-): Promise<PipelineResult> {
-  if (isAnnotationRunning(dialogueId)) {
-    throw new Error(
-      `An annotation run is already in progress for dialogue "${dialogueId}".`,
-    )
-  }
-  const controller = new AbortController()
-  activeRuns.set(dialogueId, { controller })
-  notifyRun(dialogueId)
-  try {
-    const { client, model } = await buildAnthropicClient()
-    return await run({
-      client,
-      model,
-      signal: controller.signal,
-      repo: toPipelineRepo(dialogueId),
-    })
-  } finally {
-    activeRuns.delete(dialogueId)
-    notifyRun(dialogueId)
-  }
-}
-
-/**
- * Fire-and-forget: starts a fresh annotation for a just-created dialogue.
- * Not a hook - safe to call from an event handler (Composer's submit) and
- * navigate away immediately. Registers the run in the shared registry
- * above so a `useAnnotate(dialogue.id)` mounted after navigation (e.g.
- * DialogueView) observes/cancels this same run instead of starting a
- * duplicate one. Rejects with `MissingApiKeyError` (see src/app/anthropic.ts)
- * if no key is configured - callers should catch that and toast it, since
- * by definition no component showing progress for this dialogue exists yet.
- */
-export function startAnnotation(dialogue: {
-  id: string
-  sourceText: string
-}): Promise<PipelineResult> {
-  return runPipeline(dialogue.id, (opts) => annotateDialogue(dialogue, opts))
-}
-
-// ---------------------------------------------------------------------------
-// useAnnotate hook
+// Job client (PLAN.MD §4.5, M3) — replaces the P0 in-browser pipeline.
+// Annotation now runs server-side (`api/_lib/runner.ts`); this module's job
+// is POST/merge, not run-the-model-itself. `src/sync/poll.ts`'s
+// `watchAnnotation`/`pollNow` are what keep a record's `run` fresh while a
+// job is in flight — `DialogueView` starts that watcher (resume-on-open),
+// not this hook.
 // ---------------------------------------------------------------------------
 
 export type LineStatus = 'pending' | 'done' | 'error'
@@ -180,6 +28,91 @@ function computeLineStatuses(annotation: AnnotationRecord): LineStatus[] {
     if (line !== null) return 'done'
     return annotation.lineErrors[index] !== null ? 'error' : 'pending'
   })
+}
+
+export type AnnotateState =
+  'running' | 'stalled' | 'failed' | 'cancelled' | 'complete'
+
+/**
+ * Five-state UI derivation from an `AnnotationRecord.run` (PLAN.MD §4.4):
+ * `running` = state `queued`/`running` with a live lease; `stalled` = same
+ * states with an expired lease (or, for a `leaseUntil: null` job whose
+ * runner never even took the lease, an `updatedAt` older than 15s — see
+ * `src/sync/poll.ts`'s `isLeaseStalled`, which this mirrors exactly) and
+ * lines still remaining; `failed` = `done` + `partial`; `cancelled`;
+ * `complete` = `done` + `complete`.
+ */
+export function deriveAnnotateState(
+  annotation: AnnotationRecord,
+  nowMs: number = Date.now(),
+): AnnotateState {
+  const { run, status } = annotation
+  if (run.state === 'cancelled') return 'cancelled'
+  if (run.state === 'done') {
+    return status === 'complete' ? 'complete' : 'failed'
+  }
+  const linesRemain = annotation.lines.some((line) => line === null)
+  const stalled = isLeaseStalled(run, annotation.updatedAt, nowMs)
+  return stalled && linesRemain ? 'stalled' : 'running'
+}
+
+/**
+ * The dialogue passed to `startAnnotation` already exists locally (created
+ * via `repo.createDialogue`, outbox as usual, by whichever caller — today
+ * that's always Composer or DialogueView) — but never crash rather than
+ * send `POST /api/annotate` a malformed record if it somehow doesn't.
+ */
+async function loadLocalDialogue(
+  id: string,
+  sourceText: string,
+): Promise<Dialogue> {
+  const existing = await getDialogue(id)
+  if (existing) return existing
+  const now = new Date().toISOString()
+  return {
+    id,
+    createdAt: now,
+    updatedAt: now,
+    deletedAt: null,
+    title: sourceText.slice(0, 80),
+    sourceText,
+    currentAnnotationId: null,
+  }
+}
+
+function toFriendlyError(err: unknown): Error {
+  if (err instanceof ApiError && err.kind === 'offline') {
+    return new Error('Annotation needs a connection')
+  }
+  return err instanceof Error ? err : new Error('Unknown error')
+}
+
+/**
+ * Fire-and-forget: starts a fresh annotation for a dialogue that already
+ * exists locally. Keeps the same `{ id, sourceText }` signature Composer and
+ * DialogueView called the P0 pipeline with — only what happens next
+ * changed: `POST /api/annotate` (with the current Settings model), merge
+ * both returned records in via `repo.mergeRemote*`, return the merged
+ * annotation. Callers navigate to `/d/$id` themselves, same as before
+ * (PLAN.MD §4.5). An offline `ApiError` becomes a plain `Error` reading
+ * "Annotation needs a connection", so existing `.catch(err => toast(err.
+ * message))` call sites need no changes to surface it.
+ */
+export async function startAnnotation(dialogue: {
+  id: string
+  sourceText: string
+}): Promise<AnnotationRecord> {
+  const [local, model] = await Promise.all([
+    loadLocalDialogue(dialogue.id, dialogue.sourceText),
+    getSetting('model'),
+  ])
+  try {
+    const result = await api.annotate({ dialogue: local, model })
+    await mergeRemoteDialogue(result.dialogue)
+    return await mergeRemoteAnnotation(result.annotation)
+  } catch (err) {
+    throw toFriendlyError(err)
+  }
 }
 
 export interface UseAnnotateResult {
@@ -192,26 +125,25 @@ export interface UseAnnotateResult {
   /** Index-aligned with `annotation.lines`. */
   lineStatuses: LineStatus[]
   hasFailedLines: boolean
-  /** True while a run is in flight for this dialogue, in this component or any other. */
+  /** `null` until an annotation exists for this dialogue. */
+  state: AnnotateState | null
+  /** True while `state === 'running'`, or a start/retry call is in flight. */
   isRunning: boolean
-  /** Set when the last start/resume/retry attempt threw (e.g. `MissingApiKeyError`). */
+  /** Set when the last start/retry/cancel attempt threw. */
   error: Error | null
-  /** Starts a brand-new annotation (only meaningful when `annotation` is undefined, e.g. retrying after a startup failure like a missing API key). */
+  /** Starts a brand-new annotation (only meaningful when `annotation` is undefined). */
   start: (sourceText: string) => void
-  /** Re-runs every not-yet-successful line of the existing annotation - used for both "resume" (after a cancel) and "retry failed lines": they're the same operation, since a failed line is left `null` exactly like an unattempted one (see src/llm/pipeline.ts's resumeAnnotation). */
+  /** Re-runs every not-yet-successful line — resume after a cancel/stall, or retry failed lines (the server treats these the same). */
   retry: () => void
   /** Cancels the in-flight run, if any. */
   cancel: () => void
 }
 
 /**
- * Stateful view of one dialogue's annotation progress, built on a TanStack
- * `useMutation` wrapping `annotateDialogue`/`resumeAnnotation`. Progress
- * (`done`/`total`/`lineStatuses`) is read back from Dexie via
- * `useLiveQuery`, so it stays correct even when this component didn't
- * start the run (e.g. Composer started it, DialogueView is watching it).
- * Auto-resumes once, on mount, whenever it finds a `status: 'partial'`
- * record with no run currently in flight (docs/plans/P0.md §5 M4: "resume-on-open").
+ * Stateful view of one dialogue's annotation progress. Progress
+ * (`done`/`total`/`lineStatuses`/`state`) is read back from Dexie via
+ * `useLiveQuery`, kept fresh by `src/sync/poll.ts`'s `watchAnnotation`
+ * (started by `DialogueView`, not here) merging polled records in.
  */
 export function useAnnotate(dialogueId: string): UseAnnotateResult {
   const dialogue = useLiveQuery(() => getDialogue(dialogueId), [dialogueId])
@@ -221,61 +153,31 @@ export function useAnnotate(dialogueId: string): UseAnnotateResult {
     [annotationId],
   )
 
-  const externallyRunning = useSyncExternalStore(
-    useCallback(
-      (onStoreChange) => subscribeRun(dialogueId, onStoreChange),
-      [dialogueId],
-    ),
-    () => isAnnotationRunning(dialogueId),
-  )
+  const startMutation = useMutation({
+    mutationFn: (sourceText: string) =>
+      startAnnotation({ id: dialogueId, sourceText }),
+  })
 
-  const mutation = useMutation({
-    mutationFn: async (input: { sourceText: string } | undefined) => {
-      if (input) {
-        return runPipeline(dialogueId, (opts) =>
-          annotateDialogue(
-            { id: dialogueId, sourceText: input.sourceText },
-            opts,
-          ),
-        )
-      }
-      if (!dialogue || !annotation) {
+  const retryMutation = useMutation({
+    mutationFn: async () => {
+      if (!annotation) {
         throw new Error('No annotation to resume for this dialogue yet.')
       }
-      // Re-read rather than trusting the useLiveQuery snapshot. That snapshot
-      // lags the pipeline's own writes, so it can still show lines as null
-      // that have in fact just landed - and resumeAnnotation re-runs every
-      // null line, which would mean a second paid API call per line and
-      // overwriting good results. Read the record as it is right now.
-      const fresh = await getAnnotation(annotation.id)
-      if (!fresh) {
-        throw new Error('No annotation to resume for this dialogue yet.')
+      const outcome = await api.resumeAnnotation(annotation.id)
+      if (outcome.status === 'busy') {
+        throw new Error('This annotation is already running.')
       }
-      return runPipeline(dialogueId, (opts) =>
-        resumeAnnotation(
-          {
-            annotationId: fresh.id,
-            sourceText: dialogue.sourceText,
-            lines: fresh.lines as Array<LineAnnotation | null>,
-          },
-          opts,
-        ),
-      )
+      return mergeRemoteAnnotation(outcome.record)
     },
   })
 
-  const [autoResumed, setAutoResumed] = useState<string | null>(null)
-
-  useEffect(() => {
-    if (!annotation || annotation.status !== 'partial') return
-    if (externallyRunning || mutation.isPending) return
-    // Only ever auto-fire once per annotation id, so a run that finishes
-    // back at 'partial' (e.g. every line failed again) doesn't loop.
-    if (autoResumed === annotation.id) return
-    setAutoResumed(annotation.id)
-    mutation.mutate(undefined)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [annotation?.id, annotation?.status, externallyRunning])
+  const cancelMutation = useMutation({
+    mutationFn: async () => {
+      if (!annotation) return undefined
+      const record = await api.cancelAnnotation(annotation.id)
+      return mergeRemoteAnnotation(record)
+    },
+  })
 
   const total = annotation?.lines.length ?? 0
   const done = annotation
@@ -283,18 +185,23 @@ export function useAnnotate(dialogueId: string): UseAnnotateResult {
     : 0
   const lineStatuses = annotation ? computeLineStatuses(annotation) : []
   const hasFailedLines = lineStatuses.includes('error')
+  const state = annotation ? deriveAnnotateState(annotation) : null
 
   const start = useCallback(
-    (sourceText: string) => mutation.mutate({ sourceText }),
+    (sourceText: string) => startMutation.mutate(sourceText),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dialogueId],
   )
   const retry = useCallback(
-    () => mutation.mutate(undefined),
+    () => retryMutation.mutate(),
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [dialogueId],
   )
-  const cancel = useCallback(() => cancelAnnotation(dialogueId), [dialogueId])
+  const cancel = useCallback(
+    () => cancelMutation.mutate(),
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    [dialogueId],
+  )
 
   return {
     dialogue,
@@ -303,8 +210,9 @@ export function useAnnotate(dialogueId: string): UseAnnotateResult {
     done,
     lineStatuses,
     hasFailedLines,
-    isRunning: externallyRunning || mutation.isPending,
-    error: mutation.error,
+    state,
+    isRunning: state === 'running' || startMutation.isPending,
+    error: startMutation.error ?? retryMutation.error ?? cancelMutation.error,
     start,
     retry,
     cancel,

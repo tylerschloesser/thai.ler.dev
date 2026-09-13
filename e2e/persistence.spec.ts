@@ -1,96 +1,45 @@
 import { expect, test } from './fixtures'
+import {
+  dialogueIdFromUrl,
+  readAnnotationByDialogue,
+  waitForAnnotationDone,
+} from './testUtils'
 
-// The DialogueView page (`/d/$id`) is a placeholder until a later M4 wave
-// builds it, so persistence here is asserted directly against IndexedDB
-// via `window.__thai.db` (the same debug hook `seed` uses) rather than
-// against page content - the goal of this spec is proving the annotation
-// survives a reload, not exercising DialogueView's UI.
 interface DebugWindow {
-  __thai: {
-    db: {
-      dialogues: {
-        get(
-          id: string,
-        ): Promise<{ currentAnnotationId: string | null } | undefined>
-      }
-      annotations: {
-        get(id: string): Promise<
-          | {
-              status: 'partial' | 'complete'
-              lines: unknown[]
-              lineErrors: (string | null)[]
-            }
-          | undefined
-        >
-      }
-    }
-  }
-}
-
-async function readAnnotationState(
-  page: import('@playwright/test').Page,
-  dialogueId: string,
-): Promise<{ status: string; done: number; total: number } | null> {
-  return page.evaluate(async (id) => {
-    const win = window as unknown as DebugWindow
-    const dialogue = await win.__thai.db.dialogues.get(id)
-    if (!dialogue?.currentAnnotationId) return null
-    const annotation = await win.__thai.db.annotations.get(
-      dialogue.currentAnnotationId,
-    )
-    if (!annotation) return null
-    return {
-      status: annotation.status,
-      done: annotation.lines.filter((line) => line !== null).length,
-      total: annotation.lines.length,
-    }
-  }, dialogueId)
+  __thai: { sync: { pull: () => Promise<unknown> } }
 }
 
 test.describe('persistence', () => {
-  test('an annotated dialogue survives a reload', async ({
+  test('an annotated dialogue survives a reload, and a fresh context in the same namespace pulls it from the server', async ({
     page,
-    seedApiKey,
+    newContextSameNs,
   }) => {
     await page.goto('/')
-    await seedApiKey()
 
     await page.getByRole('button', { name: 'Load sample' }).click()
     await page.getByRole('button', { name: 'Annotate' }).click()
 
     await expect(page).toHaveURL(/\/d\/[^/]+$/)
-    const dialogueId = new URL(page.url()).pathname.split('/').pop()
-    if (!dialogueId)
-      throw new Error('Could not read the dialogue id from the URL.')
+    const dialogueId = dialogueIdFromUrl(page)
 
-    // NB: use expect.poll + page.evaluate, never page.waitForFunction with an
-    // async predicate. waitForFunction resolves on the returned Promise being
-    // truthy, so an async predicate always "passes" after a single poll and
-    // the wait silently does nothing. page.evaluate does await properly.
-    await expect
-      .poll(
-        () =>
-          page.evaluate(async (id) => {
-            const win = window as unknown as DebugWindow
-            const dialogue = await win.__thai.db.dialogues.get(id)
-            if (!dialogue?.currentAnnotationId) return null
-            const annotation = await win.__thai.db.annotations.get(
-              dialogue.currentAnnotationId,
-            )
-            return annotation?.status ?? null
-          }, dialogueId),
-        { timeout: 15_000 },
-      )
-      .toBe('complete')
-
-    const beforeReload = await readAnnotationState(page, dialogueId)
-    expect(beforeReload?.status).toBe('complete')
-    expect(beforeReload?.done).toBe(beforeReload?.total)
-    expect(beforeReload?.total).toBeGreaterThan(0)
+    const beforeReload = await waitForAnnotationDone(page, dialogueId)
+    expect(beforeReload.status).toBe('complete')
+    expect(beforeReload.done).toBe(beforeReload.total)
+    expect(beforeReload.total).toBeGreaterThan(0)
 
     await page.reload()
-
-    const afterReload = await readAnnotationState(page, dialogueId)
+    const afterReload = await readAnnotationByDialogue(page, dialogueId)
     expect(afterReload).toEqual(beforeReload)
+
+    // A brand-new browser context in the same server-side namespace pulls
+    // the same dialogue + annotation back out of Blob (PLAN.MD §4.8).
+    const otherContext = await newContextSameNs()
+    const otherPage = await otherContext.newPage()
+    await otherPage.goto('/')
+    await otherPage.evaluate(() =>
+      (window as unknown as DebugWindow).__thai.sync.pull(),
+    )
+    const pulled = await readAnnotationByDialogue(otherPage, dialogueId)
+    expect(pulled).toEqual(beforeReload)
   })
 })

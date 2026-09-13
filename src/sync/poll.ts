@@ -11,7 +11,8 @@ import type { SyncApi } from './api'
 // terminal state.
 
 const POLL_INTERVAL_MS = 4_000
-const STALE_AFTER_MS = 15_000
+/** Exported for `src/features/annotate/useAnnotate.ts`'s status derivation, which mirrors this same staleness rule (PLAN.MD §4.4). */
+export const STALE_AFTER_MS = 15_000
 const RESUME_COOLDOWN_MS = 60_000
 
 export interface PollDeps {
@@ -44,6 +45,28 @@ function linesRemain(record: AnnotationRecord): boolean {
 
 function isTerminal(record: AnnotationRecord): boolean {
   return record.run.state === 'done' || record.run.state === 'cancelled'
+}
+
+/**
+ * Whether a `queued`/`running` record looks stalled — no runner is
+ * currently holding it. A live `leaseUntil` is the normal case (compared
+ * straight against `now`, with `staleAfterMs` of grace past expiry). A
+ * `queued` record can also have `leaseUntil: null` — the runner never even
+ * took the lease yet (e.g. `POST /api/annotate`'s `waitUntil(runStep(...))`
+ * never actually started, or crashed before its first write) — PLAN.MD
+ * §4.4/§10 "M3": such a record counts as live for `staleAfterMs` after its
+ * own `updatedAt`, and stalled afterwards, so `src/features/annotate/
+ * useAnnotate.ts`'s status derivation and this resume check share one rule
+ * instead of two.
+ */
+export function isLeaseStalled(
+  run: Pick<AnnotationRecord['run'], 'leaseUntil'>,
+  updatedAt: string,
+  nowMs: number,
+  staleAfterMs: number = STALE_AFTER_MS,
+): boolean {
+  const referenceIso = run.leaseUntil ?? updatedAt
+  return nowMs - Date.parse(referenceIso) > staleAfterMs
 }
 
 /**
@@ -80,13 +103,14 @@ export function watchAnnotation(id: string, deps: PollDeps = {}): () => void {
       return
     }
 
-    const leaseExpiredAtMs = record.run.leaseUntil
-      ? Date.parse(record.run.leaseUntil)
-      : null
-    const isStalled =
-      leaseExpiredAtMs !== null && now() - leaseExpiredAtMs > staleAfterMs
+    const stalled = isLeaseStalled(
+      record.run,
+      record.updatedAt,
+      now(),
+      staleAfterMs,
+    )
 
-    if (isStalled && linesRemain(record)) {
+    if (stalled && linesRemain(record)) {
       const cooledDown =
         lastResumeAttemptAt === null ||
         now() - lastResumeAttemptAt >= resumeCooldownMs

@@ -21,8 +21,5 @@ describe('settings', () => {
 
     await setSetting('thaiFontScale', 1.25)
     expect(await getSetting('thaiFontScale')).toBe(1.25)
-
-    await setSetting('apiKeyOverride', 'sk-test')
-    expect(await getSetting('apiKeyOverride')).toBe('sk-test')
   })
 })

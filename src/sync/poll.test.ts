@@ -1,7 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it } from 'vitest'
 import type { AnnotationRecord } from '../lib/records'
 import { db } from '../db/db'
-import { pollNow, stopAllWatchers, watchAnnotation } from './poll'
+import {
+  isLeaseStalled,
+  pollNow,
+  stopAllWatchers,
+  watchAnnotation,
+} from './poll'
 import type { PollDeps } from './poll'
 import type { ResumeOutcome, SyncApi } from './api'
 
@@ -75,6 +80,31 @@ function makeRecord(
 // Never let the real setInterval drive these tests — everything is driven
 // by explicit `pollNow()` calls.
 const NEVER_MS = 1_000_000
+
+describe('isLeaseStalled', () => {
+  const now = 1_000_000
+
+  it('a live (future) leaseUntil is not stalled', () => {
+    const leaseUntil = new Date(now + 5_000).toISOString()
+    expect(
+      isLeaseStalled({ leaseUntil }, '2020-01-01T00:00:00.000Z', now),
+    ).toBe(false)
+  })
+
+  it('a leaseUntil expired past the grace period is stalled', () => {
+    const leaseUntil = new Date(now - 20_000).toISOString()
+    expect(
+      isLeaseStalled({ leaseUntil }, '2020-01-01T00:00:00.000Z', now),
+    ).toBe(true)
+  })
+
+  it('a null leaseUntil falls back to updatedAt: live within 15s, stalled after', () => {
+    const fresh = new Date(now - 1_000).toISOString()
+    const stale = new Date(now - 20_000).toISOString()
+    expect(isLeaseStalled({ leaseUntil: null }, fresh, now)).toBe(false)
+    expect(isLeaseStalled({ leaseUntil: null }, stale, now)).toBe(true)
+  })
+})
 
 describe('watchAnnotation / pollNow', () => {
   it('merges each polled record and stops once the run reaches done', async () => {
@@ -196,6 +226,65 @@ describe('watchAnnotation / pollNow', () => {
     watchAnnotation('a2', { api, intervalMs: NEVER_MS })
     await pollNow()
     expect(seen).toHaveLength(2)
+  })
+
+  it('resumes a queued job whose runner never took a lease once its updatedAt is stale (null leaseUntil)', async () => {
+    const now = 1_000_000
+    const staleUpdatedAt = new Date(now - 20_000).toISOString() // > 15s stale
+
+    let resumeCalls = 0
+    const api = stubApi({
+      getAnnotation: async () =>
+        makeRecord({
+          updatedAt: staleUpdatedAt,
+          run: {
+            state: 'queued',
+            provider: 'fake-slow',
+            leaseUntil: null,
+            hops: 0,
+            steps: 0,
+            lastError: null,
+          },
+        }),
+      resumeAnnotation: async (): Promise<ResumeOutcome> => {
+        resumeCalls += 1
+        return { status: 'started', record: makeRecord() }
+      },
+    })
+    const deps: PollDeps = { api, intervalMs: NEVER_MS, now: () => now }
+
+    watchAnnotation('a1', deps)
+    await pollNow()
+    expect(resumeCalls).toBe(1)
+  })
+
+  it('does not resume a queued job with a null leaseUntil while its updatedAt is still fresh', async () => {
+    const now = 1_000_000
+    const freshUpdatedAt = new Date(now - 1_000).toISOString() // only 1s old
+
+    let resumeCalls = 0
+    const api = stubApi({
+      getAnnotation: async () =>
+        makeRecord({
+          updatedAt: freshUpdatedAt,
+          run: {
+            state: 'queued',
+            provider: 'fake-slow',
+            leaseUntil: null,
+            hops: 0,
+            steps: 0,
+            lastError: null,
+          },
+        }),
+      resumeAnnotation: async (): Promise<ResumeOutcome> => {
+        resumeCalls += 1
+        return { status: 'started', record: makeRecord() }
+      },
+    })
+
+    watchAnnotation('a1', { api, intervalMs: NEVER_MS, now: () => now })
+    await pollNow()
+    expect(resumeCalls).toBe(0)
   })
 
   it('re-watching the same id replaces the previous watcher instead of running both', async () => {

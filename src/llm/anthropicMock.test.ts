@@ -2,11 +2,7 @@ import Anthropic from '@anthropic-ai/sdk'
 import { zodOutputFormat } from '@anthropic-ai/sdk/helpers/zod'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import { LineAnnotationSchema, type LineAnnotation } from './schema.js'
-import {
-  anthropicMockRoute,
-  sseFromText,
-  type MockRoute,
-} from '../../e2e/mocks/anthropic.js'
+import { sseFromText } from '../../e2e/mocks/anthropic.js'
 
 const SAMPLE_LINE: LineAnnotation = {
   speaker: 'A',
@@ -105,65 +101,5 @@ describe('sseFromText + the real Anthropic SDK (stubbed fetch)', () => {
     const validation = LineAnnotationSchema.safeParse(message.parsed_output)
     expect(validation.success).toBe(true)
     expect(message.parsed_output).toEqual(SAMPLE_LINE)
-  })
-})
-
-describe('anthropicMockRoute', () => {
-  function makeRoute(body: unknown): {
-    route: MockRoute
-    fulfilled: { status: number; contentType: string; body: string }[]
-  } {
-    const fulfilled: { status: number; contentType: string; body: string }[] =
-      []
-    const route: MockRoute = {
-      request: () => ({ postDataJSON: () => body }),
-      fulfill: async (options) => {
-        fulfilled.push(options)
-      },
-    }
-    return { route, fulfilled }
-  }
-
-  it('finds the target line by <target line="N"> and fulfills with a matching SSE body', async () => {
-    const { route, fulfilled } = makeRoute({
-      model: 'claude-opus-5',
-      messages: [
-        {
-          role: 'user',
-          content: [
-            { type: 'text', text: '<dialogue>\n[0] ...\n</dialogue>' },
-            {
-              type: 'text',
-              text: '<target line="0">\nพนักงาน: สวัสดีค่ะ\n</target>',
-            },
-          ],
-        },
-      ],
-    })
-
-    await anthropicMockRoute(route)
-
-    expect(fulfilled).toHaveLength(1)
-    expect(fulfilled[0]?.status).toBe(200)
-    expect(fulfilled[0]?.contentType).toBe('text/event-stream')
-    expect(fulfilled[0]?.body).toContain('event: message_start')
-    expect(fulfilled[0]?.body).toContain('event: message_stop')
-  })
-
-  it('returns a 500 when no fixture line matches the request', async () => {
-    const { route, fulfilled } = makeRoute({
-      model: 'claude-opus-5',
-      messages: [
-        {
-          role: 'user',
-          content: [{ type: 'text', text: 'no target marker here at all' }],
-        },
-      ],
-    })
-
-    await anthropicMockRoute(route)
-
-    expect(fulfilled).toHaveLength(1)
-    expect(fulfilled[0]?.status).toBe(500)
   })
 })

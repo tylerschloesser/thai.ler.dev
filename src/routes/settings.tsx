@@ -1,6 +1,7 @@
 import { createFileRoute } from '@tanstack/react-router'
 import { SettingsForm } from '../features/settings/SettingsForm'
 import { ExportImport } from '../features/settings/ExportImport'
+import { SyncStatus } from '../features/settings/SyncStatus'
 
 export const Route = createFileRoute('/settings')({
   component: Settings,
@@ -19,6 +20,7 @@ function Settings() {
     >
       <h1>Settings</h1>
       <SettingsForm />
+      <SyncStatus />
       <ExportImport />
     </div>
   )

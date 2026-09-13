@@ -223,6 +223,10 @@ describe('runStep', () => {
     expect(after?.lines).toEqual([null, null])
     expect(after?.run.lastError).toMatch(/ANTHROPIC_API_KEY/)
     expect(after?.run.steps).toBe(0)
+    // A step-level failure always ends the job 'done' (PLAN.MD §10 "M3"
+    // correction) - never left running/stalled, since no hop could ever
+    // fix a step-level problem.
+    expect(after?.run.state).toBe('done')
   })
 
   it('warm-up gate: the first pending line runs alone until onStart, then the rest fan out', async () => {
@@ -556,7 +560,15 @@ describe('runStep', () => {
     expect(after?.durationMs).toBeGreaterThan(0)
   })
 
-  it('a line error is recorded in lineErrors, not run.lastError, and triggers a flush', async () => {
+  // --- PLAN.MD §4.2 step 5 / §10 "M3" correction ---------------------------
+  // A pending line counts as *attempted* once its provider call returns -
+  // success or `AnnotateError` - not just "still null". The step only hops
+  // when some pending line was never even started (deadline/reserve cut it
+  // off); a line that was attempted and failed ends the job `done` with
+  // `status: 'partial'` and the error kept in `lineErrors`, exactly like a
+  // line that succeeded ends it `done`/`complete`.
+
+  it('(a) one line always fails: one step ends the job done/partial, error kept, no hop', async () => {
     const store = createMemoryStore()
     const dlg = dialogue(1)
     const ann = annotation({ lines: [null], lineErrors: [null] })
@@ -569,7 +581,14 @@ describe('runStep', () => {
       events,
     })
     const { store: counting, counts } = countingStore(store)
-    const ctx = baseContext(counting, { createProvider: () => provider })
+    let hopCalled = 0
+    const ctx = baseContext(counting, {
+      createProvider: () => provider,
+      hop: async () => {
+        hopCalled += 1
+        return true
+      },
+    })
 
     const stepPromise = runStep(ctx, 'a1')
     await vi.advanceTimersByTimeAsync(100)
@@ -579,9 +598,126 @@ describe('runStep', () => {
     expect(after?.lines[0]).toBeNull()
     expect(after?.lineErrors[0]).toMatch(/line 0 failed/)
     expect(after?.run.lastError).toBeNull()
-    // initial lease-take + error-triggered flush + final stall write (the
-    // one line never succeeded, so this ends "still running", not "done" -
-    // no manifest put).
-    expect(counts.puts).toBe(3)
+    expect(after?.run.state).toBe('done')
+    expect(after?.status).toBe('partial')
+    expect(hopCalled).toBe(0)
+    // initial lease-take + error-triggered flush + final done write (record
+    // put + manifest put, since a 'done' write always carries one).
+    expect(counts.puts).toBe(4)
+  })
+
+  it('(b) an attempted-but-failed line does not block a hop when other lines were never attempted', async () => {
+    const store = createMemoryStore()
+    const dlg = dialogue(9)
+    // 1 pre-succeeded + 8 pending (indices 1..8); skips the warm-up gate
+    // (a line already succeeded), so the first wave is 6-wide immediately.
+    const ann = annotation({
+      lines: [
+        {
+          speaker: null,
+          thai: 'x',
+          translation: 'x',
+          sentences: [],
+          notes: [],
+        },
+        ...new Array(8).fill(null),
+      ],
+      lineErrors: new Array(9).fill(null),
+    })
+    await seed(store, dlg, ann)
+
+    const events: string[] = []
+    // Line 1 (first popped) always fails; the rest of the first wave
+    // succeed. budget=100, lineReserveMs=50: the first wave of 6 (indices
+    // 1-6) finishes at t=80 with only 20ms of budget left - below the 50ms
+    // reserve - so indices 7 and 8 are never even started.
+    const provider = makeControllableProvider({
+      durationMs: 80,
+      fail: (lineIndex) => lineIndex === 1,
+      events,
+    })
+    let hopCalled = 0
+    const ctx = baseContext(store, {
+      stepBudgetMs: 100,
+      createProvider: () => provider,
+      hop: async () => {
+        hopCalled += 1
+        return true
+      },
+    })
+
+    const stepPromise = runStep(ctx, 'a1')
+    await vi.advanceTimersByTimeAsync(200)
+    await stepPromise
+
+    expect(hopCalled).toBe(1)
+    const after = await createRecordsApi(store, 'v1/').getAnnotation('a1')
+    expect(after?.run.state).toBe('running') // stalled, not done - unattempted lines remain
+    expect(after?.lineErrors[1]).toMatch(/line 1 failed/)
+    expect(after?.lines.some((l) => l === null)).toBe(true)
+  })
+
+  it('(c) resume after a persistent failure, with the failure cleared, completes', async () => {
+    const store = createMemoryStore()
+    const dlg = dialogue(1)
+    const ann = annotation({ lines: [null], lineErrors: [null] })
+    await seed(store, dlg, ann)
+
+    const failingProvider = makeControllableProvider({
+      durationMs: 10,
+      fail: () => true,
+      events: [],
+    })
+    const ctx1 = baseContext(store, { createProvider: () => failingProvider })
+    const stepPromise1 = runStep(ctx1, 'a1')
+    await vi.advanceTimersByTimeAsync(100)
+    await stepPromise1
+
+    const records = createRecordsApi(store, 'v1/')
+    const afterFirstStep = await records.getAnnotation('a1')
+    expect(afterFirstStep?.run.state).toBe('done')
+    expect(afterFirstStep?.status).toBe('partial')
+    expect(afterFirstStep?.lineErrors[0]).toMatch(/line 0 failed/)
+
+    // Simulates what `api/annotation/resume.ts` does: flips the record
+    // back to 'queued' with a fresh lineage, leaving the still-null line to
+    // be re-run - runner.ts treats that exactly like any other pending
+    // line in a fresh step.
+    await records.putRecords(
+      [
+        {
+          kind: 'annotation',
+          id: 'a1',
+          value: {
+            ...afterFirstStep!,
+            run: {
+              ...afterFirstStep!.run,
+              state: 'queued',
+              hops: 0,
+              leaseUntil: null,
+              lastError: null,
+            },
+          },
+        },
+      ],
+      { manifest: false },
+    )
+
+    const succeedingProvider = makeControllableProvider({
+      durationMs: 10,
+      events: [],
+    })
+    const ctx2 = baseContext(store, {
+      createProvider: () => succeedingProvider,
+    })
+    const stepPromise2 = runStep(ctx2, 'a1')
+    await vi.advanceTimersByTimeAsync(100)
+    await stepPromise2
+
+    const final = await records.getAnnotation('a1')
+    expect(final?.run.state).toBe('done')
+    expect(final?.status).toBe('complete')
+    expect(final?.lines[0]).not.toBeNull()
+    expect(final?.lineErrors[0]).toBeNull()
   })
 })
