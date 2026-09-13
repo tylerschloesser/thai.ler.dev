@@ -69,7 +69,19 @@ the fake provider by default, and a small, budgeted number of Blob
 operations (≈ 40 advanced / ≈ 80 simple ops per run, `PLAN.MD` §4.3). The
 one exception is `live/real-model`, which calls the real Anthropic API and
 only runs when invoked as `E2E_REAL_MODEL=1 pnpm test:e2e:vercel` — skipped
-otherwise, and never run as part of the normal gate. See
+otherwise, and never run as part of the normal gate. `pnpm test:e2e:vercel`
+has run green twice against a CLI preview (7 passed, `real-model`
+skipped), plus once more with `E2E_REAL_MODEL=1` (8/8) — see
+`.claude/rules/testing.md` and `PLAN.MD` §10 for the recorded numbers.
+After the M6 production cutover, the one `@live` spec meaningful against
+production (test mode off) is:
+
+```sh
+E2E_TARGET=production PLAYWRIGHT_BASE_URL=https://thai-ler-dev.vercel.app \
+  pnpm exec playwright test e2e/live/health.spec.ts
+```
+
+Production isn't deployed yet, so that run hasn't happened. See
 `.claude/rules/testing.md` for the mock contract, cookie-based test-mode
 overrides, and namespace isolation.
 
