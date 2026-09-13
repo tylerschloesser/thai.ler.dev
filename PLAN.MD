@@ -1414,6 +1414,20 @@ export async function pull(): Promise<PullCounts> {
   deadline cut off lines that were **never attempted**. Otherwise it ends
   `done` with `status: 'partial'` and `lineErrors` kept, and Retry (=
   `resume`) re-runs the `null` lines in a new lineage.
+- **"Terminal" means released, not just `done`/`cancelled`** (found in
+  M3b's `job-cancel` spec). The client's watcher stopped as soon as it saw
+  the cancel endpoint's own response. The runner then finished its
+  in-flight lines, but the UI never saw them until some later pull. Now
+  `cancel` leaves `run.leaseUntil` as it is, and the runner's final write
+  clears it. `src/sync/poll.ts` treats a record as terminal only when
+  `run.state ∈ done | cancelled` **and** the lease is `null` or expired. A
+  cancelled record is never auto-resumed. `DialogueView`'s watch effect
+  uses that same exported predicate. It used to watch only while `queued`
+  or `running`, so the Cancel click's own merge unsubscribed it before the
+  runner's final write. Related: a poller sees partial
+  progress only at flushes, which come every 25 s, on a line error, and at
+  step end. That is the Blob budget trade-off from §4.3, so a short job may
+  show nothing until it finishes.
 
 ---
 
