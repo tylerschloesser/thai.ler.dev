@@ -10,7 +10,6 @@ import {
 } from '../../db/repo'
 import { getSetting, setSetting } from '../../db/settings'
 import type { Settings } from '../../db/settings'
-import { exportSnapshot } from '../../db/snapshot'
 import { splitDialogue } from '../../llm/split'
 import { isTerminal, watchAnnotation } from '../../sync/poll'
 import {
@@ -82,35 +81,13 @@ function lineStatus(line: unknown, error: string | null): LineStatus {
   return error !== null ? 'error' : 'pending'
 }
 
-function slugify(title: string): string {
-  const slug = title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-  return slug || 'dialogue'
-}
-
-function downloadJson(filename: string, data: unknown): void {
-  const blob = new Blob([JSON.stringify(data, null, 2)], {
-    type: 'application/json',
-  })
-  const url = URL.createObjectURL(blob)
-  const anchor = document.createElement('a')
-  anchor.href = url
-  anchor.download = filename
-  document.body.appendChild(anchor)
-  anchor.click()
-  anchor.remove()
-  URL.revokeObjectURL(url)
-}
-
 export interface DialogueViewProps {
   dialogueId: string
 }
 
 /**
  * The rendered annotation page (`/d/$id`, docs/plans/P0.md §4.3): title with inline
- * rename, a meta line (model, date, re-annotate, delete, export), the
+ * rename, a meta line (model, date, re-annotate, delete), the
  * display toggles, `AnnotateStatus` for in-flight progress, then a
  * `LineView` per line.
  */
@@ -219,19 +196,6 @@ export function DialogueView({ dialogueId }: DialogueViewProps) {
     }
   }
 
-  async function handleExport() {
-    const snapshot = await exportSnapshot()
-    const filtered = {
-      ...snapshot,
-      dialogues: snapshot.dialogues.filter((row) => row.id === dialogue.id),
-      annotations: snapshot.annotations.filter(
-        (row) => row.dialogueId === dialogue.id,
-      ),
-      settings: [],
-    }
-    downloadJson(`${slugify(dialogue.title)}.json`, filtered)
-  }
-
   return (
     <div className={styles.root}>
       <div className={styles.titleRow}>
@@ -288,13 +252,6 @@ export function DialogueView({ dialogueId }: DialogueViewProps) {
             onClick={() => void handleReannotate()}
           >
             Re-annotate
-          </Button>
-          <Button
-            variant="secondary"
-            size="sm"
-            onClick={() => void handleExport()}
-          >
-            Export
           </Button>
           <AlertDialog.Root>
             <AlertDialog.Trigger render={<Button variant="danger" size="sm" />}>

@@ -1,33 +1,4 @@
 import { expect, test } from './fixtures'
-import type { Dialogue } from '../src/db/db'
-import { DB_SCHEMA_VERSION } from '../src/db/db'
-import type { Snapshot } from '../src/db/snapshot'
-import { SNAPSHOT_FORMAT } from '../src/db/snapshot'
-
-function makeDialogue(id: string, title: string): Dialogue {
-  const now = new Date().toISOString()
-  return {
-    id,
-    createdAt: now,
-    updatedAt: now,
-    deletedAt: null,
-    title,
-    sourceText: 'พนักงาน: สวัสดีค่ะ\nลูกค้า: สวัสดีครับ',
-    currentAnnotationId: null,
-  }
-}
-
-function makeSnapshot(dialogues: Dialogue[]): Snapshot {
-  return {
-    format: SNAPSHOT_FORMAT,
-    schemaVersion: DB_SCHEMA_VERSION,
-    exportedAt: new Date().toISOString(),
-    deviceId: 'e2e-settings-spec',
-    dialogues,
-    annotations: [],
-    settings: [],
-  }
-}
 
 interface DebugWindow {
   __thai: {
@@ -99,53 +70,6 @@ test.describe('settings', () => {
     ).toHaveAttribute('aria-pressed', 'false')
   })
 
-  test('Export downloads a valid snapshot of the current data', async ({
-    page,
-    seed,
-  }) => {
-    const dialogue = makeDialogue('e2e-settings-export', 'Ordering coffee')
-    await page.goto('/settings')
-    await seed(makeSnapshot([dialogue]))
-
-    const downloadPromise = page.waitForEvent('download')
-    await page.getByRole('button', { name: 'Export', exact: true }).click()
-    const download = await downloadPromise
-
-    expect(download.suggestedFilename()).toMatch(
-      /^thai-ler-dev-\d{4}-\d{2}-\d{2}\.json$/,
-    )
-
-    const path = await download.path()
-    if (!path) throw new Error('Download did not save to disk.')
-    const fs = await import('node:fs/promises')
-    const contents = await fs.readFile(path, 'utf8')
-    const snapshot = JSON.parse(contents) as Snapshot
-
-    expect(snapshot.format).toBe(SNAPSHOT_FORMAT)
-    expect(snapshot.schemaVersion).toBe(DB_SCHEMA_VERSION)
-    expect(snapshot.dialogues.some((d) => d.id === dialogue.id)).toBe(true)
-  })
-
-  test('Import merges a snapshot and toasts the merge counts', async ({
-    page,
-  }, testInfo) => {
-    await page.goto('/settings')
-
-    const incoming = makeSnapshot([
-      makeDialogue('e2e-settings-import', 'At the market'),
-    ])
-    const filePath = testInfo.outputPath('import-snapshot.json')
-    const fs = await import('node:fs/promises')
-    await fs.writeFile(filePath, JSON.stringify(incoming), 'utf8')
-
-    await page.getByLabel('Import snapshot file').setInputFiles(filePath)
-
-    await expect(page.getByText('Import complete')).toBeVisible()
-    await expect(
-      page.getByText('1 added, 0 updated, 0 unchanged.'),
-    ).toBeVisible()
-  })
-
   test('a changed model is sent as the model in POST /api/annotate', async ({
     page,
   }) => {
@@ -188,10 +112,9 @@ test.describe('settings', () => {
     ).toBeVisible()
     await expect(syncSection.getByText('Last pull')).toBeVisible()
     // `{ exact: true }` matters here: a plain `getByText('Never')` also
-    // case-insensitively substring-matches ExportImport's unrelated "is
-    // never wiped" copy elsewhere on the page, which would make this
-    // assertion pass or fail for the wrong reason regardless of the actual
-    // sync state.
+    // case-insensitively substring-matches other unrelated copy elsewhere
+    // on the page, which would make this assertion pass or fail for the
+    // wrong reason regardless of the actual sync state.
     await expect(syncSection.getByText('Never', { exact: true })).toHaveCount(0)
     await expect(
       syncSection.getByRole('button', { name: 'Sync now' }),
@@ -202,20 +125,5 @@ test.describe('settings', () => {
 
     await expect(page.getByLabel('API key override')).toHaveCount(0)
     await expect(page.getByText('No API key configured')).toHaveCount(0)
-  })
-
-  test('Import of a malformed file surfaces a readable error toast', async ({
-    page,
-  }, testInfo) => {
-    await page.goto('/settings')
-
-    const filePath = testInfo.outputPath('not-json.txt')
-    const fs = await import('node:fs/promises')
-    await fs.writeFile(filePath, 'this is not json', 'utf8')
-
-    await page.getByLabel('Import snapshot file').setInputFiles(filePath)
-
-    await expect(page.getByText('Import failed')).toBeVisible()
-    await expect(page.getByText('not valid JSON')).toBeVisible()
   })
 })

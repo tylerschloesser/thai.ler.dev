@@ -161,9 +161,14 @@ an id the server (and every other device) has already forgotten.
   `mergeSettingRows` (`src/lib/merge.ts`) exactly like the server does, and
   return whichever side actually won so the caller knows what's now stored.
 
-## Snapshot format v2 (`src/db/snapshot.ts`)
+## Snapshot format v2 — internal seeding/debug format (`src/db/snapshot.ts`)
 
-The export format is the sync payload shape:
+Tyler doesn't want an import/export feature (dropped 2026-09-13, PLAN.MD
+§10) — there is no user-facing Export/Import UI anywhere in the app. The
+`Snapshot` shape below is purely internal now: it's the sync payload shape,
+used by `window.__thai.{exportSnapshot,importSnapshot}` (`src/app/debug.ts`)
+for e2e seeding (`e2e/fixtures.ts`'s `seed`) and ad hoc debugging in the
+browser console — never surfaced through any component.
 
 ```ts
 interface Snapshot {
@@ -177,21 +182,22 @@ interface Snapshot {
 }
 ```
 
-`schemaVersion` is `2` on every export now (`AnnotationRecord` includes
-`run`). `upgradeSnapshot(snapshot)` normalizes an incoming snapshot before
-merging: `schemaVersion: 1` (pre-M1/M2, no `run` on any annotation) gets
-`LEGACY_RUN` stamped onto every annotation; a `schemaVersion: 2` snapshot
-missing `run` on some row (e.g. hand-edited) gets the same defaulting
-defensively; anything else (`0`, `3`, ...) is refused with a readable
-error, never silently coerced. `mergeSnapshot(local, incoming)` calls
-`upgradeSnapshot` first, then merges last-writer-wins per record by
-`updatedAt` via `pickWinner`, with tombstones winning ties (settings merge
-per-key via `mergeSettingRows`, no tombstone concept). Import
-(`importSnapshot`) always merges — it never wipes local data — and enqueues
-an outbox row for every record the merge actually added or changed (not
-for records it skipped), so an imported library gets pushed on the next
-sync. Unit-test LWW, tombstone resurrection prevention, the v1→v2 upgrade,
-and the unsupported-schemaVersion refusal.
+`schemaVersion` is `2` on every export (`AnnotationRecord` includes `run`).
+`mergeSnapshot(local, incoming)`/`importSnapshot(incoming)` both refuse an
+`incoming` snapshot whose `format` isn't `SNAPSHOT_FORMAT` or whose
+`schemaVersion` isn't the current `DB_SCHEMA_VERSION`, with a readable
+error — there is no upgrade path from an older `schemaVersion` (that
+existed only to import pre-M1/M2 P0 export files, which is no longer a
+supported flow). Every snapshot fed into these two functions — from
+`exportSnapshot()` itself, e2e fixtures, or a hand-written test snapshot —
+is expected to already be at the current shape. Merging itself is
+last-writer-wins per record by `updatedAt` via `pickWinner`, with
+tombstones winning ties (settings merge per-key via `mergeSettingRows`, no
+tombstone concept). Import (`importSnapshot`) always merges — it never
+wipes local data — and enqueues an outbox row for every record the merge
+actually added or changed (not for records it skipped), so a seeded
+library gets pushed on the next sync. Unit-test LWW, tombstone resurrection
+prevention, and the unsupported-format/schemaVersion refusal.
 
 ## Client sync (`src/sync/`)
 

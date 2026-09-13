@@ -1,4 +1,4 @@
-import { db, DB_SCHEMA_VERSION, LEGACY_RUN } from './db'
+import { db, DB_SCHEMA_VERSION } from './db'
 import type { AnnotationRecord, Base, Dialogue, SettingRow } from './db'
 import { enqueueOutbox } from './repo'
 import { getDeviceId } from './meta'
@@ -31,9 +31,6 @@ export interface MergeOutcome {
   counts: MergeCounts
 }
 
-/** The oldest snapshot `schemaVersion` this app still knows how to upgrade. */
-const MIN_SUPPORTED_SCHEMA_VERSION = 1
-
 function assertSnapshotFormat(format: string): void {
   if (format !== SNAPSHOT_FORMAT) {
     throw new Error(
@@ -43,38 +40,19 @@ function assertSnapshotFormat(format: string): void {
   }
 }
 
-function assertSupportedSchemaVersion(schemaVersion: number): void {
-  if (
-    schemaVersion !== MIN_SUPPORTED_SCHEMA_VERSION &&
-    schemaVersion !== DB_SCHEMA_VERSION
-  ) {
+/**
+ * This is the internal seeding/debug format now (no user-facing
+ * import/export), so every snapshot handed to `mergeSnapshot`/
+ * `importSnapshot` is expected to already be at the current
+ * `DB_SCHEMA_VERSION` shape — refuses anything else with a readable error
+ * rather than silently coercing it.
+ */
+function assertCurrentSchemaVersion(schemaVersion: number): void {
+  if (schemaVersion !== DB_SCHEMA_VERSION) {
     throw new Error(
       `Cannot import snapshot: schemaVersion ${schemaVersion} is not supported ` +
-        `by this app (expected ${DB_SCHEMA_VERSION}). Update the app before ` +
-        'importing this snapshot.',
+        `by this app (expected ${DB_SCHEMA_VERSION}).`,
     )
-  }
-}
-
-/**
- * Normalizes an incoming snapshot to the current shape: accepts
- * `schemaVersion` 1 (pre-M1/M2, no `run` on any `AnnotationRecord`) by
- * stamping `LEGACY_RUN` on every annotation, and defensively defaults a
- * missing `run` on a `schemaVersion: 2` snapshot too (e.g. a hand-edited or
- * partially-migrated file) — refuses anything else with a readable error.
- * Pure; does no I/O.
- */
-export function upgradeSnapshot(snapshot: Snapshot): Snapshot {
-  assertSnapshotFormat(snapshot.format)
-  assertSupportedSchemaVersion(snapshot.schemaVersion)
-
-  return {
-    ...snapshot,
-    schemaVersion: DB_SCHEMA_VERSION,
-    annotations: snapshot.annotations.map((annotation) => ({
-      ...annotation,
-      run: annotation.run ?? LEGACY_RUN,
-    })),
   }
 }
 
@@ -157,18 +135,18 @@ function mergeSettings(
  * Pure merge of two snapshots: per-record last-writer-wins by `updatedAt`
  * (tombstones win ties), never wiping anything that's only in `local`.
  * Throws on an unsupported `format`/`schemaVersion` rather than silently
- * coercing (via `upgradeSnapshot`). Does no I/O — safe to unit test
- * directly.
+ * coercing. Does no I/O — safe to unit test directly.
  */
 export function mergeSnapshot(
   local: Snapshot,
   incoming: Snapshot,
 ): MergeOutcome {
-  const upgraded = upgradeSnapshot(incoming)
+  assertSnapshotFormat(incoming.format)
+  assertCurrentSchemaVersion(incoming.schemaVersion)
 
-  const dialogues = mergeById(local.dialogues, upgraded.dialogues)
-  const annotations = mergeById(local.annotations, upgraded.annotations)
-  const settings = mergeSettings(local.settings, upgraded.settings)
+  const dialogues = mergeById(local.dialogues, incoming.dialogues)
+  const annotations = mergeById(local.annotations, incoming.annotations)
+  const settings = mergeSettings(local.settings, incoming.settings)
 
   return {
     dialogues: dialogues.merged,
@@ -208,7 +186,8 @@ export async function exportSnapshot(): Promise<Snapshot> {
  * server on the next sync. Returns counts so the UI can toast them.
  */
 export async function importSnapshot(incoming: Snapshot): Promise<MergeCounts> {
-  const upgraded = upgradeSnapshot(incoming)
+  assertSnapshotFormat(incoming.format)
+  assertCurrentSchemaVersion(incoming.schemaVersion)
   const local: Snapshot = {
     format: SNAPSHOT_FORMAT,
     schemaVersion: DB_SCHEMA_VERSION,
@@ -219,9 +198,9 @@ export async function importSnapshot(incoming: Snapshot): Promise<MergeCounts> {
     settings: await db.settings.toArray(),
   }
 
-  const dialogues = mergeById(local.dialogues, upgraded.dialogues)
-  const annotations = mergeById(local.annotations, upgraded.annotations)
-  const settings = mergeSettings(local.settings, upgraded.settings)
+  const dialogues = mergeById(local.dialogues, incoming.dialogues)
+  const annotations = mergeById(local.annotations, incoming.annotations)
+  const settings = mergeSettings(local.settings, incoming.settings)
 
   await db.transaction(
     'rw',

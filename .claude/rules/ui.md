@@ -63,8 +63,8 @@ dark mode rather than reusing the light-mode hex.
 ## Empty / error states
 
 Use the shared `EmptyState` component for "no dialogues yet"
-(`DialogueList.tsx`); surface annotation and import/export errors through
-the root `Toast` provider, not ad hoc inline banners. There is no
+(`DialogueList.tsx`); surface annotation errors through the root `Toast`
+provider, not ad hoc inline banners. There is no
 "no API key configured" state — the Anthropic key lives only in the
 server's environment, never in Settings.
 

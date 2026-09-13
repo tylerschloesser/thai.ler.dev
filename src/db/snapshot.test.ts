@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it } from 'vitest'
-import { db, DB_SCHEMA_VERSION } from './db'
-import type { Dialogue } from './db'
+import { db, DB_SCHEMA_VERSION, LEGACY_RUN } from './db'
+import type { AnnotationRecord, Dialogue } from './db'
 import {
   exportSnapshot,
   importSnapshot,
@@ -9,11 +9,13 @@ import {
 } from './snapshot'
 import type { Snapshot } from './snapshot'
 import { createDialogue, listDialoguesAsync, softDeleteDialogue } from './repo'
+import { manifestKey } from '../lib/records'
 
 beforeEach(async () => {
   await db.dialogues.clear()
   await db.annotations.clear()
   await db.settings.clear()
+  await db.outbox.clear()
 })
 
 function emptySnapshot(overrides: Partial<Snapshot> = {}): Snapshot {
@@ -29,7 +31,7 @@ function emptySnapshot(overrides: Partial<Snapshot> = {}): Snapshot {
   }
 }
 
-function makeDialogue(overrides: Partial<Dialogue>): Dialogue {
+function makeDialogue(overrides: Partial<Dialogue> = {}): Dialogue {
   return {
     id: 'd1',
     createdAt: '2026-01-01T00:00:00.000Z',
@@ -38,6 +40,28 @@ function makeDialogue(overrides: Partial<Dialogue>): Dialogue {
     title: 'Title',
     sourceText: 'Hello',
     currentAnnotationId: null,
+    ...overrides,
+  }
+}
+
+function makeAnnotation(
+  overrides: Partial<AnnotationRecord> = {},
+): AnnotationRecord {
+  return {
+    id: 'a1',
+    createdAt: '2026-01-01T00:00:00.000Z',
+    updatedAt: '2026-01-01T00:00:00.000Z',
+    deletedAt: null,
+    dialogueId: 'd1',
+    model: 'claude-opus-5',
+    promptVersion: 1,
+    schemaVersion: DB_SCHEMA_VERSION,
+    lines: [],
+    lineErrors: [],
+    status: 'complete',
+    usage: { inputTokens: 0, outputTokens: 0, cacheReadTokens: 0 },
+    durationMs: 0,
+    run: LEGACY_RUN,
     ...overrides,
   }
 }
@@ -192,5 +216,74 @@ describe('softDeleteDialogue + export', () => {
     const snapshot = await exportSnapshot()
     const exported = snapshot.dialogues.find((row) => row.id === d.id)
     expect(exported?.deletedAt).not.toBeNull()
+  })
+})
+
+describe('importSnapshot enqueues outbox rows', () => {
+  it('enqueues exactly the dialogues/annotations/settings that changed', async () => {
+    const untouched = await createDialogue('Untouched locally')
+    await db.outbox.clear()
+
+    const incoming = emptySnapshot({
+      dialogues: [makeDialogue({ id: 'new-d1' })],
+      annotations: [makeAnnotation({ id: 'new-a1', dialogueId: 'new-d1' })],
+      settings: [
+        { key: 'theme', value: 'dark', updatedAt: '2026-01-05T00:00:00.000Z' },
+      ],
+    })
+
+    const counts = await importSnapshot(incoming)
+    expect(counts.added).toBe(3)
+
+    const rows = await db.outbox.toArray()
+    const keys = rows.map((r) => r.key).sort()
+    expect(keys).toEqual(
+      [
+        manifestKey('dialogue', 'new-d1'),
+        manifestKey('annotation', 'new-a1'),
+        'settings:all',
+      ].sort(),
+    )
+    // The pre-existing local dialogue was not touched by the import, so it
+    // must not appear in the outbox as a side effect of this import.
+    expect(rows.some((r) => r.id === untouched.id)).toBe(false)
+  })
+
+  it('does not enqueue a settings row when nothing about settings changed', async () => {
+    await db.settings.put({
+      key: 'theme',
+      value: 'dark',
+      updatedAt: '2026-02-01T00:00:00.000Z',
+    })
+    await db.outbox.clear()
+
+    const incoming = emptySnapshot({
+      settings: [
+        { key: 'theme', value: 'dark', updatedAt: '2026-01-01T00:00:00.000Z' },
+      ],
+    })
+
+    await importSnapshot(incoming)
+    const rows = await db.outbox.toArray()
+    expect(rows.some((r) => r.kind === 'settings')).toBe(false)
+  })
+
+  it('skips (does not re-enqueue) a record where the older incoming record loses', async () => {
+    const local = await createDialogue('Local, newer')
+    await db.outbox.clear()
+
+    const incoming = emptySnapshot({
+      dialogues: [
+        makeDialogue({
+          id: local.id,
+          updatedAt: '2000-01-01T00:00:00.000Z',
+          title: 'Stale incoming',
+        }),
+      ],
+    })
+
+    const counts = await importSnapshot(incoming)
+    expect(counts.skipped).toBe(1)
+    expect(await db.outbox.toArray()).toHaveLength(0)
   })
 })

@@ -136,15 +136,6 @@ auth/secrets design (the hop's internal secret, the WAF rate limit, and the
 `production` branch tracking) and `.claude/rules/deploy.md` for the
 Deployment Protection, WAF, and DNS details.
 
-## Moving your P0 library
-
-The P0 library lives in the browser's IndexedDB on whichever origin you
-used before the cutover (a P0 preview URL), and doesn't move itself —
-it's a one-off, by hand: **Settings → Export** there to get a snapshot
-file, then **Settings → Import** once on `https://thai.ler.dev`. The
-outbox pushes the imported records to Blob on the next sync, same as any
-other local write.
-
 ## Operations
 
 Three failure modes are expected to happen occasionally on a Hobby plan,
@@ -233,7 +224,8 @@ finishes, just not without the page being reopened once.
 - `src/routes/` — file-based routes (TanStack Router); `src/routeTree.gen.ts`
   is generated, commit it, never hand-edit it
 - `src/db/` — Dexie schema, the sole local write path (`repo.ts`), settings,
-  snapshot export/import, the outbox
+  the internal snapshot format (seeding/debug, no user-facing import/
+  export), the outbox
 - `src/sync/` — the client sync loop: pull, push, per-job polling, status
 - `src/llm/` — prompt, schema, the per-line annotation call, the
   `LineProvider` interface shared with `api/_lib/providers/`

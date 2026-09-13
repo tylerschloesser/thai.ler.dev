@@ -658,8 +658,10 @@ playwright test e2e/live/health.spec.ts` passes with the bypass header,
    verify `https://thai.ler.dev` → SSO → app. The old AWS stack stays up
    until then and is decommissioned by Tyler later.
 5. Executor: Tyler's data migration note — export the P0 library from the
-   preview origin he used (Settings → Export), import it once on
-   production (Settings → Import); the outbox pushes it to Blob.
+   preview origin he used via the Settings export action, import it once on
+   production via the Settings import action; the outbox pushes it to Blob.
+   **Dropped** (see §10 "Corrected during M6"): Tyler doesn't want
+   import/export, so the P0 library was never migrated.
 6. Executor: update `CLAUDE.md` rule 3/9, `.claude/rules/deploy.md`,
    `README.md` ("production is deployed by pushing `vercel`"). The
    `.claude/settings.json` deny entries for `vercel --prod` **stay** —
@@ -943,7 +945,8 @@ Reuse `docs/plans/P0.md` §7 verbatim, with these additions:
 5. Budget: ≈ $1–3 of Anthropic usage across the real-model smokes and two
    manual walks; $0 Vercel (Hobby).
 6. Optional: export the P0 library from the preview origin you used before
-   M6 so it can be imported on production.
+   M6 so it can be imported on production. **Dropped** (see §10 "Corrected
+   during M6") — Tyler doesn't want import/export.
 
 ---
 
@@ -1516,6 +1519,15 @@ export async function pull(): Promise<PullCounts> {
   browser that sends a Vercel Authentication cookie for `thai.ler.dev`. One
   whose old worker blocks the SSO login needs a manual Unregister in
   DevTools.
+- **Tyler dropped import/export (2026-09-13)**: the Settings Export/Import
+  section and the per-dialogue Export button are removed, and the P0
+  library is not migrated — §4.10 step 5 and §8 item 6 are dropped, not
+  done. The internal `Snapshot` format (`src/db/snapshot.ts`) stays as the
+  e2e seeding/debug format (`window.__thai`, `e2e/fixtures.ts`'s `seed`);
+  `upgradeSnapshot` and `schemaVersion: 1` (P0) support are removed —
+  `mergeSnapshot`/`importSnapshot` now refuse any snapshot that isn't
+  already at the current `DB_SCHEMA_VERSION`, since nothing in this repo
+  ever seeds or imports a pre-M1/M2 snapshot any more.
 
 ---
 

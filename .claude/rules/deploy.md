@@ -98,14 +98,6 @@ The Playwright run needs `VERCEL_AUTOMATION_BYPASS_SECRET` exported (from
 `.claude/rules/testing.md` for what `E2E_TARGET=production` changes in the
 spec's own assertions.
 
-## Data migration (one-off, post-cutover)
-
-Tyler's P0 library lives in the IndexedDB of whichever origin he used
-before M6 (a P0 preview URL). To move it into production: Settings →
-Export there, then Settings → Import once on `https://thai.ler.dev` — the
-outbox pushes the imported records to Blob on the next sync. The old AWS
-stack is torn down; nothing in this repo depends on it.
-
 ## The old service worker (`public/sw.js`)
 
 The retired AWS app registered a `vite-plugin-pwa` service worker at
