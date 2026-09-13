@@ -2,11 +2,13 @@ import {
   BlobError,
   BlobNotFoundError,
   BlobPreconditionFailedError,
+  BlobStoreSuspendedError,
+  get,
   put,
 } from '@vercel/blob'
 import { describe, expect, it, vi } from 'vitest'
 import { StorePreconditionError } from './paths.js'
-import { createVercelStore } from './vercel.js'
+import { createVercelStore, StoreSuspendedError } from './vercel.js'
 
 /**
  * Mocks `@vercel/blob` so the ifMatch-on-a-missing-blob error mapping can
@@ -75,6 +77,30 @@ describe('createVercelStore putJson ifMatch error mapping', () => {
     const store = createVercelStore()
     await expect(store.putJson('a.json', { n: 1 })).rejects.toThrow(
       'network blip',
+    )
+  })
+})
+
+describe('createVercelStore suspended-store mapping', () => {
+  // A Hobby store past its monthly quota answers every request with
+  // BlobStoreSuspendedError until the 30-day window resets (PLAN.MD §4.3,
+  // §9 risks, §5 M5). Every backend method maps it to the dedicated
+  // StoreSuspendedError so `api/_lib/http.ts`'s `failFromError` can turn it
+  // into a readable `fail('store', ...)` toast without callers needing to
+  // know which SDK error class they're talking to.
+  it('maps a suspended store on getJson', async () => {
+    vi.mocked(get).mockRejectedValueOnce(new BlobStoreSuspendedError())
+
+    const store = createVercelStore()
+    await expect(store.getJson('a.json')).rejects.toThrow(StoreSuspendedError)
+  })
+
+  it('maps a suspended store on putJson', async () => {
+    vi.mocked(put).mockRejectedValueOnce(new BlobStoreSuspendedError())
+
+    const store = createVercelStore()
+    await expect(store.putJson('a.json', { n: 1 })).rejects.toThrow(
+      StoreSuspendedError,
     )
   })
 })

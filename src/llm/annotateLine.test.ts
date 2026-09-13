@@ -198,6 +198,11 @@ describe('annotateLine', () => {
 
     expect(err).toBeInstanceOf(AnnotateError)
     expect((err as AnnotateError).kind).toBe('authentication')
+    // The message is operator-facing (PLAN.MD §5 M5, README "Operations"):
+    // the Anthropic key lives only in the server's environment as of M3, so
+    // it must say what to do server-side, never "check Settings".
+    expect((err as AnnotateError).message).toMatch(/rotate ANTHROPIC_API_KEY/)
+    expect((err as AnnotateError).message).not.toMatch(/settings/i)
   })
 
   it('maps a 429 API response to a "rate_limited"-kind AnnotateError', async () => {

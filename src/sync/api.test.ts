@@ -81,6 +81,32 @@ describe('createApi', () => {
     })
   })
 
+  // PLAN.MD §5 M5: `failFromError` (api/_lib/http.ts) maps a suspended
+  // Blob store to `fail('store', <readable message>)`; this layer must
+  // preserve that message verbatim so `src/features/annotate/
+  // useAnnotate.ts`'s `toFriendlyError` (which passes any non-offline
+  // ApiError through untouched) and `src/sync/useSync.ts`'s `lastError`
+  // both show the operator-facing text, not a generic "kind: store"
+  // fallback.
+  it('preserves a readable store-kind error message verbatim (e.g. a suspended Blob store)', async () => {
+    const message =
+      'Cloud sync is paused: the Vercel Blob store is suspended until its monthly quota resets. Your library still works offline.'
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(
+        jsonResponse({ error: { kind: 'store', message } }, 502),
+      )
+    const api = createApi(fetchImpl)
+
+    const err = await api
+      .annotate({ dialogue: {} as never, model: 'claude-opus-5' })
+      .catch((e: unknown) => e)
+
+    expect(err).toBeInstanceOf(ApiError)
+    expect((err as ApiError).kind).toBe('store')
+    expect((err as ApiError).message).toBe(message)
+  })
+
   it('putRecord sends kind + record and unwraps the winner', async () => {
     const winner = { key: 'theme', value: 'dark', updatedAt: 'x' }
     const fetchImpl = vi
